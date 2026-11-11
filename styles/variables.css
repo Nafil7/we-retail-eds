@@ -1,0 +1,22 @@
+:root {
+  /* We.Retail Brand Colors */
+  --primary-color: #eb1c24;
+  --primary-hover: #b0141a;
+  --dark-header: #1a1a1a;
+  --dark-utility: #111111;
+  --dark-footer: #1a1a1a;
+  --body-color: #222222;
+  --background-color: #ffffff;
+  --border-color: #e5e5e5;
+  --card-background: #ffffff;
+  --text-muted: #777777;
+
+  /* Typography */
+  --body-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --heading-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Layout */
+  --site-max-width: 1200px;
+  --header-height: 80px;
+  --hero-banner-height: 460px;
+}

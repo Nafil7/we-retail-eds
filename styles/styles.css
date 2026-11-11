@@ -1,0 +1,78 @@
+@import url('./variables.css');
+
+/* ==========================================================================
+   We.Retail Official Edge Delivery Stylesheet
+   100% Pure We.Retail Brand Architecture
+   ========================================================================== */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--body-font-family);
+  margin: 0;
+  padding: 0;
+  color: var(--body-color);
+  background-color: var(--background-color);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--primary-hover);
+  text-decoration: underline;
+}
+
+main > .section {
+  max-width: var(--site-max-width);
+  margin: 0 auto;
+  padding: 24px 20px;
+}
+
+main > .section:first-child {
+  max-width: unset;
+  padding: 0;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--heading-font-family);
+  font-weight: 700;
+  color: var(--body-color);
+  margin-top: 0;
+}
+
+h2 {
+  font-size: 28px;
+  border-bottom: 2px solid var(--primary-color);
+  display: inline-block;
+  padding-bottom: 6px;
+  margin-bottom: 24px;
+}
+
+/* Button variants */
+.button,
+a.button {
+  display: inline-block;
+  background-color: var(--primary-color);
+  color: #ffffff;
+  padding: 10px 24px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-radius: 2px;
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+}
+
+.button:hover,
+a.button:hover {
+  background-color: var(--primary-hover);
+  color: #ffffff;
+  text-decoration: none;
+}

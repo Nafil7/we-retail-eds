@@ -1,0 +1,16 @@
+{
+  "public": {
+    "paths": {
+      "mappings": [
+        "/content/we-retail/us/en/:/"
+      ],
+      "includes": [
+        "/content/we-retail/",
+        "/content/dam/we-retail/"
+      ],
+      "excludes": [
+        "/content/we-retail/drafts/"
+      ]
+    }
+  }
+}

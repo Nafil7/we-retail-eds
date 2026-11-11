@@ -1,0 +1,86 @@
+header .header {
+  width: 100%;
+}
+
+.we-header-utility {
+  background-color: #111111;
+  color: #ffffff;
+  border-bottom: 1px solid #333333;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 0;
+}
+
+.we-header-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.we-user-nav a {
+  color: #cccccc;
+  margin-left: 16px;
+  text-decoration: none;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+
+.we-user-nav a:hover {
+  color: #ffffff;
+}
+
+.we-header-main {
+  background-color: #1a1a1a;
+  padding: 14px 0;
+}
+
+.we-logo a {
+  text-decoration: none;
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 2px;
+}
+
+.we-logo-we {
+  color: #ffffff;
+}
+
+.we-logo-dot,
+.we-logo-retail {
+  color: #eb1c24;
+}
+
+.we-nav {
+  display: flex;
+  gap: 20px;
+}
+
+.we-nav a {
+  color: #e0e0e0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-decoration: none;
+  padding: 6px 4px;
+  transition: color 0.2s ease;
+}
+
+.we-nav a:hover {
+  color: #eb1c24;
+}
+
+.we-search-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background-color: #eb1c24;
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 16px;
+  border-radius: 2px;
+}
