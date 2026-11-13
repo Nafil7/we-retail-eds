@@ -1,0 +1,63 @@
+/* ==========================================================================
+   Columns block — We.Retail EDS
+   Used for sitefeature (Free delivery, Online booking, Online support).
+   Images are small service icons — must be constrained.
+   ========================================================================== */
+
+.columns > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 16px 0;
+}
+
+/* Service-feature icon sizing — exact measured source AEM 6.5 geometry (36px) */
+.columns .columns-item img,
+.columns > div img {
+  max-width: 36px;
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  margin: 0 auto;
+  display: block;
+}
+
+/* Desktop: row layout */
+@media (width >= 600px) {
+  .columns-wrapper {
+    max-width: 1264px;
+    margin: 0 auto;
+    padding: 0 32px;
+  }
+
+  .columns > div {
+    display: grid;
+    grid-auto-columns: 1fr;
+    grid-auto-flow: column;
+    gap: 24px;
+    align-items: start;
+  }
+}
+
+/* Each columns-item */
+.columns .columns-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: 20px 16px;
+}
+
+.columns .columns-item p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.columns .columns-item p:first-of-type {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--body-color, #131313);
+}
+

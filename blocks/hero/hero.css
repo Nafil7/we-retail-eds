@@ -68,6 +68,32 @@
   margin: 12px 0 0 0;
 }
 
+/* CTA button — rendered by hero.js from last <p><a> in content row */
+.hero .hero-content .button-wrapper {
+  margin-top: 20px;
+  text-shadow: none;
+}
+
+.hero .hero-content .button {
+  display: inline-block;
+  background-color: var(--primary-color, #d2001f);
+  color: #ffffff !important;
+  padding: 12px 28px;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  border-radius: 2px;
+  text-decoration: none !important;
+  text-shadow: none;
+  transition: background-color 0.2s ease;
+}
+
+.hero .hero-content .button:hover {
+  background-color: #a30018;
+  color: #ffffff !important;
+}
+
 @media (max-width: 768px) {
   .hero {
     height: 340px;
@@ -80,3 +106,4 @@
     font-size: 15px;
   }
 }
+
