@@ -2,7 +2,7 @@ export default function decorate(block) {
   block.innerHTML = `
 <div class="we-footer">
   <div class="we-footer-container">
-    <div class="we-footer-brand">WE.RETAIL</div>
+    <div class="we-footer-brand">we.<strong>Retail</strong></div>
     <div class="we-footer-links">
       <a href="/content/we-retail/us/en/experience.html">Experience</a>
       <a href="/content/we-retail/us/en/men.html">Men</a>
@@ -13,7 +13,7 @@ export default function decorate(block) {
       <a href="/content/we-retail/us/en/community.html">Community</a>
     </div>
     <div class="we-footer-copy">
-      Terms of use &amp; privacy policy &bull; <a href="#top">Ride to the top</a>
+      &copy; 2026 All rights reserved &bull; <a href="#">Terms of use &amp; privacy policy</a> &bull; <a href="#top" class="we-ride-top">Ride to the top</a>
     </div>
   </div>
 </div>`;

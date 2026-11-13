@@ -51,8 +51,8 @@ main>.section>div:not(.hero-wrapper),
 main>div>div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata) {
   margin-left: auto;
   margin-right: auto;
-  padding-left: 12px;
-  padding-right: 12px;
+  padding-left: 15px;
+  padding-right: 15px;
   box-sizing: border-box;
   width: 100%;
 }
@@ -62,7 +62,7 @@ main>div>div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata) {
   div[data-aue-model="section"]>div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata),
   main>.section>div:not(.hero-wrapper),
   main>div>div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata) {
-    max-width: 744px;
+    max-width: 750px;
   }
 }
 
@@ -71,16 +71,16 @@ main>div>div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata) {
   div[data-aue-model="section"]>div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata),
   main>.section>div:not(.hero-wrapper),
   main>div>div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata) {
-    max-width: 964px;
+    max-width: 970px;
   }
 }
 
-@media (min-width: 1248px) {
+@media (min-width: 1200px) {
 
   div[data-aue-model="section"]>div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata),
   main>.section>div:not(.hero-wrapper),
   main>div>div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata) {
-    max-width: 1224px;
+    max-width: 1170px;
   }
 }
 

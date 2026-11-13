@@ -20,16 +20,55 @@ header {
   height: 32px;
   display: flex;
   align-items: center;
+  position: relative;
 }
 
 .we-header-utility .we-header-container {
   width: 100%;
-  max-width: 1224px;
+  max-width: 1170px;
   margin: 0 auto;
-  padding: 0 12px;
+  padding: 0 15px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.we-lang {
+  cursor: pointer;
+  position: relative;
+  user-select: none;
+}
+
+.we-lang-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  min-width: 160px;
+  z-index: 1001;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+}
+
+.we-lang.open .we-lang-dropdown {
+  display: block;
+}
+
+.we-lang-dropdown a {
+  display: block;
+  padding: 8px 12px;
+  color: #ccc;
+  text-decoration: none;
+  margin-left: 0 !important;
+  font-size: 11px;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.we-lang-dropdown a:hover,
+.we-lang-dropdown a.active {
+  background: #333;
+  color: #fff;
 }
 
 .we-header-utility a {
@@ -55,9 +94,9 @@ header {
 
 .we-header-main .we-header-container {
   width: 100%;
-  max-width: 1224px;
+  max-width: 1170px;
   margin: 0 auto;
-  padding: 0 12px;
+  padding: 0 15px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -117,7 +156,13 @@ header {
 .we-actions {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 12px;
+}
+
+.we-search-form {
+  margin: 0;
+  display: flex;
+  align-items: center;
 }
 
 .we-search-input {
@@ -126,8 +171,48 @@ header {
   font-size: 13px;
   border-radius: 0;
   outline: none;
+  width: 140px;
+  transition: width 0.3s ease;
 }
 
 .we-search-input:focus {
   border-color: #eb1c24;
+}
+
+.we-search-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+}
+
+@media (max-width: 991px) {
+  .we-header-main .we-header-container {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 10px 15px;
+  }
+  .we-nav {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    gap: 16px;
+    padding: 8px 0;
+  }
+  .we-header-utility .we-header-container {
+    padding: 0 15px;
+  }
+  .we-user-nav {
+    overflow-x: auto;
+  }
+  .we-user-nav a {
+    margin-left: 12px;
+  }
+}
+
+@media (max-width: 575px) {
+  .we-user-nav a:not(.we-cart) {
+    display: none;
+  }
 }
