@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Carousel Behavioral Test</title>
+  <link rel="stylesheet" href="../../styles/styles.css">
+  <link rel="stylesheet" href="../../blocks/carousel/carousel.css">
+</head>
+<body>
+  <div id="test-results"></div>
+  <div class="carousel" id="carousel-test">
+    <div>
+      <div><picture><img src="/img1.jpg" alt="Slide 1"></picture></div>
+      <div><h3>Slide 1</h3><p>Description 1</p></div>
+    </div>
+    <div>
+      <div><picture><img src="/img2.jpg" alt="Slide 2"></picture></div>
+      <div><h3>Slide 2</h3><p>Description 2</p></div>
+    </div>
+    <div>
+      <div><picture><img src="/img3.jpg" alt="Slide 3"></picture></div>
+      <div><h3>Slide 3</h3><p>Description 3</p></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import decorate from '../../blocks/carousel/carousel.js';
+    const block = document.getElementById('carousel-test');
+    decorate(block);
+
+    const log = [];
+    function assert(desc, condition) {
+      log.push({ desc, pass: !!condition });
+    }
+
+    const slides = block.querySelectorAll('.carousel-slide');
+    const indicators = block.querySelectorAll('.carousel-indicator');
+
+    // Test 1: Decorate structure & ARIA
+    assert('3 slides created', slides.length === 3);
+    assert('Slide 0 active initially', slides[0].classList.contains('active'));
+    assert('Slide 0 role tabpanel', slides[0].getAttribute('role') === 'tabpanel');
+    assert('Slide 0 aria-hidden false', slides[0].getAttribute('aria-hidden') === 'false');
+    assert('Slide 1 aria-hidden true', slides[1].getAttribute('aria-hidden') === 'true');
+    assert('3 indicators created', indicators.length === 3);
+    assert('Indicator 0 selected', indicators[0].getAttribute('aria-selected') === 'true');
+
+    // Test 2: Indicator click
+    indicators[1].click();
+    assert('Slide 1 active after click', slides[1].classList.contains('active'));
+    assert('Slide 0 hidden after click', slides[0].getAttribute('aria-hidden') === 'true');
+    assert('Indicator 1 selected after click', indicators[1].getAttribute('aria-selected') === 'true');
+
+    // Test 3: Keyboard navigation
+    block.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    assert('Slide 2 active after ArrowRight', slides[2].classList.contains('active'));
+
+    block.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    assert('Slide 1 active after ArrowLeft', slides[1].classList.contains('active'));
+
+    // Test 4: Autoplay advance
+    // Set a timeout to check autoplay after 5.5s
+    setTimeout(() => {
+      assert('Autoplay rotated slide automatically', slides[2].classList.contains('active'));
+      
+      // Test 5: Mouseenter pause
+      block.dispatchEvent(new MouseEvent('mouseenter'));
+      setTimeout(() => {
+        assert('Autoplay paused on mouseenter', slides[2].classList.contains('active'));
+        
+        // Write out test results to DOM
+        const resultsEl = document.getElementById('test-results');
+        resultsEl.textContent = JSON.stringify(log);
+        window.__CAROUSEL_TESTS_DONE = true;
+      }, 5500);
+    }, 5500);
+  </script>
+</body>
+</html>
+

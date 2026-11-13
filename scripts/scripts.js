@@ -143,11 +143,33 @@ function decorateButtons(main) {
 }
 
 /**
+ * Resolves We.Retail DAM asset references to repository-hosted media.
+ * @param {Element} main The main container element
+ */
+function normalizeMediaSources(main) {
+  const damPrefix = '/content/dam/we-retail/';
+  main.querySelectorAll('img').forEach((img) => {
+    const src = img.getAttribute('src');
+    if (src && src.includes(damPrefix)) {
+      const fileName = src.split('/').pop();
+      img.src = `${window.hlx?.codeBasePath || ''}/media/${encodeURIComponent(decodeURIComponent(fileName))}`;
+    }
+  });
+  main.querySelectorAll('source').forEach((source) => {
+    const srcset = source.getAttribute('srcset');
+    if (srcset && srcset.includes(damPrefix)) {
+      source.srcset = srcset.replace(/\/content\/dam\/we-retail\/[^?#]+?\/([^/?#]+)/g, (_, fileName) => `${window.hlx?.codeBasePath || ''}/media/${encodeURIComponent(decodeURIComponent(fileName))}`);
+    }
+  });
+}
+
+/**
  * Decorates the main element.
  * @param {Element} main The main element
  */
 // eslint-disable-next-line import/prefer-default-export
 export function decorateMain(main) {
+  normalizeMediaSources(main);
   decorateIcons(main);
   buildAutoBlocks(main);
   decorateSections(main);
