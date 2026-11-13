@@ -1,0 +1,19 @@
+[
+  {
+    "id": "container",
+    "components": [
+      "title",
+      "text",
+      "image",
+      "accordion",
+      "columns",
+      "cards",
+      "tabs",
+      "carousel",
+      "teaser",
+      "hero",
+      "video"
+    ]
+  }
+]
+
