@@ -212,7 +212,43 @@ header {
 }
 
 @media (max-width: 575px) {
+  .we-header-utility {
+    height: 28px;
+    font-size: 10px;
+  }
+  .we-header-utility .we-header-container {
+    padding: 0 10px;
+  }
   .we-user-nav a:not(.we-cart) {
     display: none;
+  }
+  .we-header-main {
+    height: auto;
+  }
+  .we-header-main .we-header-container {
+    padding: 8px 10px;
+  }
+  .we-logo a {
+    font-size: 20px;
+    letter-spacing: 1px;
+  }
+  .we-nav {
+    gap: 14px;
+    padding: 6px 0 2px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .we-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .we-nav a {
+    font-size: 12px;
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+  .we-search-input {
+    width: 90px;
+    font-size: 12px;
+    padding: 4px 8px;
   }
 }
