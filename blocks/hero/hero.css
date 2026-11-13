@@ -1,109 +1,126 @@
 /* ==========================================================================
-   We.Retail Official Hero Banner
-   Clean, responsive 460px bounded layout.
-   Zero full-screen 99svh takeovers, zero distortion zoom.
+   We.Retail Official Hero Block Styles
+   Strict parity with AEM 6.5 .we-HeroImage
    ========================================================================== */
 
-.hero-container {
-  max-width: unset;
-  padding: 0;
+.hero-wrapper {
+  padding: 0 !important;
+  margin: 0 !important;
+  max-width: 100% !important;
 }
 
 .hero {
   position: relative;
-  width: 100%;
-  min-height: 440px;
-  max-height: 480px;
-  height: 460px;
+  min-height: 460px;
+  height: auto;
   overflow: hidden;
-  background-color: #111111;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 32px;
+  background-color: #555;
+  color: #fff;
+  margin-bottom: 40px;
 }
 
-.hero picture {
+/* Background Image Container */
+.hero > div:first-child {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   z-index: 1;
 }
 
-.hero picture img,
-.hero img {
+.hero > div:first-child picture,
+.hero > div:first-child img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 30%;
+  object-position: center;
   display: block;
 }
 
-.hero .hero-content,
-.hero > div:last-child {
-  position: relative;
+/* Authentic Gradient Contrast Overlay */
+.hero::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.55));
   z-index: 2;
-  text-align: center;
-  color: #ffffff;
-  padding: 40px 20px;
+  pointer-events: none;
 }
 
-.hero h1,
-.hero h2 {
-  font-size: 56px;
-  font-weight: 900;
-  letter-spacing: 3px;
+/* Hero Content Wrapper */
+.hero > div:last-child {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  max-width: 1224px;
+  padding: 40px 24px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.hero h1 {
+  font-family: var(--heading-font-family, 'Montserrat', sans-serif);
+  font-size: 42px;
+  font-weight: 700;
   text-transform: uppercase;
-  color: #ffffff;
-  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.8);
-  margin: 0;
+  color: #fff;
+  margin: 0 0 16px;
+  line-height: 1.2;
+  text-shadow: 2px 4px 3px rgba(0, 0, 0, 0.5);
 }
 
 .hero p {
   font-size: 18px;
-  letter-spacing: 1px;
-  color: #ffffff;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
-  margin: 12px 0 0 0;
+  font-weight: 400;
+  color: #fff;
+  margin: 0 0 24px;
+  text-shadow: 2px 4px 3px rgba(0, 0, 0, 0.5);
 }
 
-/* CTA button — rendered by hero.js from last <p><a> in content row */
-.hero .hero-content .button-wrapper {
-  margin-top: 20px;
-  text-shadow: none;
-}
-
-.hero .hero-content .button {
+/* Authentic We.Retail .btn-outline-white CTA button */
+.hero a,
+.hero a.button,
+.hero p a {
   display: inline-block;
-  background-color: var(--primary-color, #d2001f);
-  color: #ffffff !important;
-  padding: 12px 28px;
-  font-size: 14px;
+  padding: 12px 32px;
+  background-color: transparent !important;
+  color: #fff !important;
+  border: 2px solid #fff !important;
+  border-radius: 0 !important;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 2px;
-  border-radius: 2px;
+  letter-spacing: 1.5px;
+  font-size: 14px;
   text-decoration: none !important;
-  text-shadow: none;
-  transition: background-color 0.2s ease;
+  text-shadow: none !important;
+  transition: all 0.25s ease;
 }
 
-.hero .hero-content .button:hover {
-  background-color: #a30018;
-  color: #ffffff !important;
+.hero a:hover,
+.hero a.button:hover,
+.hero p a:hover {
+  background-color: #fff !important;
+  color: #222 !important;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .hero {
-    height: 340px;
-    min-height: 320px;
+    min-height: 380px;
   }
   .hero h1 {
-    font-size: 36px;
+    font-size: 28px;
   }
   .hero p {
-    font-size: 15px;
+    font-size: 16px;
   }
 }
-

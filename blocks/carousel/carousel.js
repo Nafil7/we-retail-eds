@@ -1,137 +1,123 @@
-/**
- * Carousel block — We.Retail EDS
- *
- * Source: weretail/components/content/carousel with 3 teaser children.
- * Cloud JCR currently stores these as `cards` model (bug in last migration run).
- * This block handles the carousel model structure when re-migrated correctly.
- *
- * Raw HTML delivered per slide (carousel-item child):
- *   <div data-aue-model="carousel-item">
- *     <div>  ← image cell
- *       <picture><img src="..." alt="title"></picture>
- *     </div>
- *     <div>  ← content cell
- *       <h3>title</h3>
- *       <p>description</p>
- *       <p><a href="...">Explore →</a></p>
- *     </div>
- *   </div>
- *
- * Behavior:
- *  - One slide visible at a time (desktop: show slide with prev/next controls)
- *  - Dot indicators beneath
- *  - Keyboard: ArrowLeft / ArrowRight
- *  - No autoplay (source does not autoplay)
- *  - Idempotent: skip if .carousel-track already present
- */
 export default function decorate(block) {
-  if (block.querySelector('.carousel-track')) return; // idempotency
-
   const slides = [...block.children];
   if (slides.length === 0) return;
 
-  // Build track
-  const track = document.createElement('div');
-  track.className = 'carousel-track';
+  const slidesContainer = document.createElement('div');
+  slidesContainer.className = 'carousel-slides';
 
-  slides.forEach((slide, i) => {
-    slide.classList.add('carousel-slide');
-    slide.setAttribute('role', 'group');
+  const indicators = document.createElement('ol');
+  indicators.className = 'carousel-indicators';
+  indicators.setAttribute('role', 'tablist');
+
+  slides.forEach((slide, idx) => {
+    slide.className = 'carousel-slide';
+    slide.setAttribute('role', 'tabpanel');
     slide.setAttribute('aria-roledescription', 'slide');
-    slide.setAttribute('aria-label', `Slide ${i + 1} of ${slides.length}`);
-    if (i !== 0) slide.setAttribute('aria-hidden', 'true');
+    slide.setAttribute('aria-label', `${idx + 1} of ${slides.length}`);
 
-    // Promote image and content semantics within each slide
+    // If slide has image + text cells, format as picture + caption
     const cells = [...slide.children];
-    if (cells[0]) cells[0].classList.add('carousel-slide-image');
-    if (cells[1]) cells[1].classList.add('carousel-slide-content');
-
-    // CTA button styling
-    const ctaP = [...(cells[1]?.querySelectorAll('p') || [])].find((p) => {
-      const a = p.querySelector('a');
-      return a && p.textContent.trim() === a.textContent.trim();
-    });
-    if (ctaP) {
-      ctaP.querySelector('a').classList.add('button', 'primary');
-      ctaP.classList.add('button-wrapper');
+    if (cells.length >= 2) {
+      const caption = document.createElement('div');
+      caption.className = 'carousel-caption';
+      while (cells[1].firstChild) {
+        caption.appendChild(cells[1].firstChild);
+      }
+      cells[1].replaceWith(caption);
     }
 
-    track.append(slide);
+    if (idx === 0) {
+      slide.classList.add('active');
+      slide.setAttribute('aria-hidden', 'false');
+    } else {
+      slide.setAttribute('aria-hidden', 'true');
+    }
+
+    slidesContainer.appendChild(slide);
+
+    // Indicator button
+    const indicator = document.createElement('button');
+    indicator.className = 'carousel-indicator';
+    indicator.setAttribute('role', 'tab');
+    indicator.setAttribute('aria-label', `Slide ${idx + 1}`);
+    if (idx === 0) {
+      indicator.classList.add('active');
+      indicator.setAttribute('aria-selected', 'true');
+    } else {
+      indicator.setAttribute('aria-selected', 'false');
+    }
+    indicator.addEventListener('click', () => showSlide(idx));
+    indicators.appendChild(indicator);
+  });
+
+  // Navigation buttons
+  const prevBtn = document.createElement('button');
+  prevBtn.className = 'carousel-btn prev';
+  prevBtn.innerHTML = '&#10094;';
+  prevBtn.setAttribute('aria-label', 'Previous slide');
+
+  const nextBtn = document.createElement('button');
+  nextBtn.className = 'carousel-btn next';
+  nextBtn.innerHTML = '&#10095;';
+  nextBtn.setAttribute('aria-label', 'Next slide');
+
+  let currentIdx = 0;
+  let timer = null;
+
+  function showSlide(newIdx) {
+    slides[currentIdx].classList.remove('active');
+    slides[currentIdx].setAttribute('aria-hidden', 'true');
+    indicators.children[currentIdx].classList.remove('active');
+    indicators.children[currentIdx].setAttribute('aria-selected', 'false');
+
+    currentIdx = (newIdx + slides.length) % slides.length;
+
+    slides[currentIdx].classList.add('active');
+    slides[currentIdx].setAttribute('aria-hidden', 'false');
+    indicators.children[currentIdx].classList.add('active');
+    indicators.children[currentIdx].setAttribute('aria-selected', 'true');
+  }
+
+  prevBtn.addEventListener('click', () => showSlide(currentIdx - 1));
+  nextBtn.addEventListener('click', () => showSlide(currentIdx + 1));
+
+  // 5000ms autoplay matching AEM Core Components data-cmp-delay="5000"
+  function startAutoplay() {
+    if (!timer) {
+      timer = setInterval(() => {
+        showSlide(currentIdx + 1);
+      }, 5000);
+    }
+  }
+
+  function pauseAutoplay() {
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+  }
+
+  block.addEventListener('mouseenter', pauseAutoplay);
+  block.addEventListener('mouseleave', startAutoplay);
+  block.addEventListener('focusin', pauseAutoplay);
+  block.addEventListener('focusout', startAutoplay);
+
+  // Keyboard navigation on indicators
+  indicators.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') {
+      showSlide(currentIdx - 1);
+      indicators.children[currentIdx].focus();
+    } else if (e.key === 'ArrowRight') {
+      showSlide(currentIdx + 1);
+      indicators.children[currentIdx].focus();
+    }
   });
 
   block.innerHTML = '';
-  block.append(track);
+  block.appendChild(slidesContainer);
+  block.appendChild(prevBtn);
+  block.appendChild(nextBtn);
+  block.appendChild(indicators);
 
-  // Prev/Next controls
-  const prev = document.createElement('button');
-  prev.className = 'carousel-prev';
-  prev.setAttribute('aria-label', 'Previous slide');
-  prev.innerHTML = '&#10094;';
-
-  const next = document.createElement('button');
-  next.className = 'carousel-next';
-  next.setAttribute('aria-label', 'Next slide');
-  next.innerHTML = '&#10095;';
-
-  // Dots
-  const dots = document.createElement('div');
-  dots.className = 'carousel-dots';
-  dots.setAttribute('role', 'tablist');
-
-  const dotEls = slides.map((_, i) => {
-    const dot = document.createElement('button');
-    dot.className = 'carousel-dot';
-    dot.setAttribute('role', 'tab');
-    dot.setAttribute('aria-label', `Go to slide ${i + 1}`);
-    dot.setAttribute('aria-selected', i === 0 ? 'true' : 'false');
-    dots.append(dot);
-    return dot;
-  });
-
-  block.append(prev, next, dots);
-
-  let current = 0;
-
-  function goTo(index) {
-    const allSlides = [...track.children];
-    const n = allSlides.length;
-    if (n === 0) return;
-    const next_i = (index + n) % n;
-
-    allSlides[current].setAttribute('aria-hidden', 'true');
-    dotEls[current].setAttribute('aria-selected', 'false');
-    dotEls[current].classList.remove('active');
-
-    current = next_i;
-
-    allSlides[current].removeAttribute('aria-hidden');
-    dotEls[current].setAttribute('aria-selected', 'true');
-    dotEls[current].classList.add('active');
-
-    track.style.transform = `translateX(-${current * 100}%)`;
-  }
-
-  // Set initial dot
-  if (dotEls[0]) {
-    dotEls[0].classList.add('active');
-  }
-
-  prev.addEventListener('click', () => goTo(current - 1));
-  next.addEventListener('click', () => goTo(current + 1));
-  dotEls.forEach((dot, i) => dot.addEventListener('click', () => goTo(i)));
-
-  // Keyboard navigation
-  block.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowLeft') goTo(current - 1);
-    if (e.key === 'ArrowRight') goTo(current + 1);
-  });
-  block.setAttribute('tabindex', '0');
-
-  // Handle zero/one slide gracefully
-  if (slides.length <= 1) {
-    prev.style.display = 'none';
-    next.style.display = 'none';
-    dots.style.display = 'none';
-  }
+  startAutoplay();
 }
-

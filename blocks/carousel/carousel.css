@@ -1,123 +1,135 @@
 /* ==========================================================================
-   Carousel block — We.Retail EDS
-   Scoped entirely under .carousel; no global overrides.
+   We.Retail Official Carousel Block Styles
+   Parity with .cmp-carousel in AEM Core Components & clientlib-base.css
    ========================================================================== */
 
 .carousel {
   position: relative;
-  overflow: hidden;
   width: 100%;
-  outline: none;
+  margin: 30px auto 50px;
+  overflow: hidden;
 }
 
-.carousel-track {
-  display: flex;
-  transition: transform 0.4s ease;
-  will-change: transform;
+.carousel-slides {
+  position: relative;
+  width: 100%;
+  min-height: 420px;
 }
 
 .carousel-slide {
-  min-width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  box-sizing: border-box;
-}
-
-.carousel-slide-image {
-  width: 100%;
-  overflow: hidden;
-  max-height: 400px;
-}
-
-.carousel-slide-image picture,
-.carousel-slide-image img {
+  display: none;
   width: 100%;
   height: 100%;
+  position: relative;
+}
+
+.carousel-slide.active {
+  display: block;
+}
+
+/* Slide image */
+.carousel-slide picture,
+.carousel-slide img {
+  width: 100%;
+  height: 420px;
   object-fit: cover;
   display: block;
 }
 
-.carousel-slide-content {
-  padding: 20px 24px 24px;
-  background: #fff;
+/* Slide Overlay Banner */
+.carousel-slide .carousel-caption {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+  color: #fff;
+  padding: 40px 30px 24px;
+  text-align: left;
 }
 
-.carousel-slide-content h3 {
-  font-size: 20px;
+.carousel-slide h3,
+.carousel-slide h2 {
+  font-family: var(--heading-font-family, 'Montserrat', sans-serif);
+  font-size: 24px;
   font-weight: 700;
+  color: #fff;
   margin: 0 0 8px;
-  color: var(--body-color, #131313);
+  text-transform: uppercase;
 }
 
-.carousel-slide-content p {
+.carousel-slide p {
+  color: #ddd;
   font-size: 14px;
-  color: var(--dark-color, #505050);
   margin: 0 0 12px;
 }
 
-/* Prev/Next controls */
-.carousel-prev,
-.carousel-next {
-  position: absolute;
-  top: 40%;
-  transform: translateY(-50%);
-  background: rgba(0, 0, 0, 0.45);
+.carousel-slide a {
+  display: inline-block;
   color: #fff;
-  border: none;
-  padding: 10px 14px;
-  font-size: 20px;
-  cursor: pointer;
-  z-index: 10;
-  border-radius: 2px;
-  line-height: 1;
-  transition: background 0.2s;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 13px;
+  border-bottom: 2px solid #eb1c24;
+  padding-bottom: 2px;
 }
 
-.carousel-prev:hover,
-.carousel-next:hover {
-  background: rgba(0, 0, 0, 0.75);
-}
-
-.carousel-prev { left: 8px; }
-.carousel-next { right: 8px; }
-
-/* Dot indicators */
-.carousel-dots {
+/* Indicators (3 circular dots) */
+.carousel-indicators {
   display: flex;
   justify-content: center;
-  gap: 8px;
-  padding: 12px 0;
+  align-items: center;
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+  gap: 12px;
 }
 
-.carousel-dot {
+.carousel-indicator {
   width: 10px;
   height: 10px;
   border-radius: 50%;
+  background-color: #ccc;
   border: none;
-  background: #ccc;
-  cursor: pointer;
   padding: 0;
-  transition: background 0.2s;
+  cursor: pointer;
+  transition: all 0.25s ease;
 }
 
-.carousel-dot.active,
-.carousel-dot[aria-selected="true"] {
-  background: var(--primary-color, #d2001f);
+.carousel-indicator.active,
+.carousel-indicator[aria-selected="true"] {
+  background-color: #eb1c24;
+  transform: scale(1.25);
 }
 
-/* Desktop: single-active slide with indicators, matching AEM 6.5 cmp-carousel */
-@media (width >= 768px) {
-  .carousel-slide-content {
-    padding: 28px 36px 36px;
-  }
-
-  .carousel-slide-content h3 {
-    font-size: 24px;
-  }
-
-  .carousel-slide-content p {
-    font-size: 16px;
-  }
+/* Navigation buttons (prev/next) */
+.carousel-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: rgba(0, 0, 0, 0.4);
+  color: #fff;
+  border: none;
+  font-size: 24px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: background-color 0.2s ease;
 }
 
+.carousel-btn:hover {
+  background-color: #eb1c24;
+}
+
+.carousel-btn.prev {
+  left: 10px;
+}
+
+.carousel-btn.next {
+  right: 10px;
+}

@@ -10,70 +10,121 @@
 }
 
 body {
-  font-family: var(--body-font-family);
+  font-family: var(--body-font-family, 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif);
   margin: 0;
   padding: 0;
-  color: var(--body-color);
-  background-color: var(--background-color);
+  color: var(--body-color, #222);
+  background-color: var(--background-color, #fff);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
 a {
-  color: var(--primary-color);
+  color: var(--primary-color, #eb1c24);
   text-decoration: none;
 }
 
 a:hover {
-  color: var(--primary-hover);
+  color: var(--primary-hover, #c7151c);
   text-decoration: underline;
 }
 
-main > .section {
-  max-width: var(--site-max-width);
-  margin: 0 auto;
-  padding: 24px 20px;
+/* ==========================================================================
+   GAP-01: Validated Section-to-Container Grid System
+   Matches AEM 6.5 clientlib-base.css .container rules
+   ========================================================================== */
+
+/* Full-width Hero */
+div[data-aue-model="hero"],
+div.hero,
+.hero-wrapper {
+  width: 100%;
+  max-width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding: 0 !important;
 }
 
-main > .section:first-child {
-  max-width: unset;
-  padding: 0;
+/* Bounded Content Containers for both EDS standalone and Universal Editor Crosswalk DOM */
+div[data-aue-model="section"] > div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata),
+main > .section > div:not(.hero-wrapper),
+main > div > div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata) {
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 12px;
+  padding-right: 12px;
+  box-sizing: border-box;
+  width: 100%;
 }
 
+@media (min-width: 768px) {
+  div[data-aue-model="section"] > div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata),
+  main > .section > div:not(.hero-wrapper),
+  main > div > div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata) {
+    max-width: 744px;
+  }
+}
+
+@media (min-width: 992px) {
+  div[data-aue-model="section"] > div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata),
+  main > .section > div:not(.hero-wrapper),
+  main > div > div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata) {
+    max-width: 964px;
+  }
+}
+
+@media (min-width: 1248px) {
+  div[data-aue-model="section"] > div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata),
+  main > .section > div:not(.hero-wrapper),
+  main > div > div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata) {
+    max-width: 1224px;
+  }
+}
+
+/* ==========================================================================
+   GAP-04: Section Headings
+   ========================================================================== */
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--heading-font-family);
+  font-family: var(--heading-font-family, 'Montserrat', 'Helvetica Neue', Helvetica, Arial, sans-serif);
   font-weight: 700;
-  color: var(--body-color);
+  color: var(--body-color, #222);
   margin-top: 0;
 }
 
 h2 {
   font-size: 28px;
-  border-bottom: 2px solid var(--primary-color);
-  display: inline-block;
-  padding-bottom: 6px;
-  margin-bottom: 24px;
+  text-transform: uppercase;
+  text-align: center;
+  margin: 48px auto 28px;
+  letter-spacing: 1.5px;
+  display: block;
 }
 
-/* Button variants */
+/* ==========================================================================
+   GAP-10: Defense-in-depth Suppression of Leaked JSON
+   ========================================================================== */
+.parked-component {
+  display: none !important;
+}
+
+/* Buttons */
 .button,
 a.button {
   display: inline-block;
-  background-color: var(--primary-color);
-  color: #ffffff;
   padding: 10px 24px;
-  font-weight: 700;
+  background-color: var(--primary-color, #eb1c24);
+  color: #fff;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  text-align: center;
   text-transform: uppercase;
   letter-spacing: 1px;
-  border-radius: 2px;
-  text-decoration: none;
   transition: background-color 0.2s ease;
 }
 
 .button:hover,
 a.button:hover {
-  background-color: var(--primary-hover);
-  color: #ffffff;
+  background-color: var(--primary-hover, #c7151c);
   text-decoration: none;
 }
-

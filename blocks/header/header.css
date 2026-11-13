@@ -1,87 +1,133 @@
-header .header {
+/* ==========================================================================
+   We.Retail Official Header Styles
+   Matches AEM 6.5 weretail/components/structure/header
+   ========================================================================== */
+
+header {
+  position: relative;
+  z-index: 1000;
   width: 100%;
+  background-color: #fff;
+  border-bottom: 1px solid #e5e5e5;
 }
 
+/* 1. Black Utility Bar */
 .we-header-utility {
-  background-color: #111111;
-  color: #ffffff;
-  border-bottom: 1px solid #333333;
+  background-color: #000;
+  color: #ccc;
   font-size: 11px;
-  font-weight: 700;
-  padding: 6px 0;
+  font-family: var(--body-font-family, sans-serif);
+  height: 32px;
+  display: flex;
+  align-items: center;
 }
 
-.we-header-container {
-  max-width: 1200px;
+.we-header-utility .we-header-container {
+  width: 100%;
+  max-width: 1224px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.we-user-nav a {
-  color: #cccccc;
-  margin-left: 16px;
+.we-header-utility a {
+  color: #ccc;
   text-decoration: none;
-  font-size: 11px;
-  letter-spacing: 1px;
+  margin-left: 20px;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
-.we-user-nav a:hover {
-  color: #ffffff;
+.we-header-utility a:hover {
+  color: #fff;
 }
 
+/* 2. Main White Navigation Bar */
 .we-header-main {
-  background-color: #1a1a1a;
-  padding: 14px 0;
+  background-color: #fff;
+  height: 75px;
+  display: flex;
+  align-items: center;
 }
 
+.we-header-main .we-header-container {
+  width: 100%;
+  max-width: 1224px;
+  margin: 0 auto;
+  padding: 0 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Logo */
 .we-logo a {
+  display: flex;
+  align-items: center;
   text-decoration: none;
+  font-family: var(--heading-font-family, 'Montserrat', sans-serif);
   font-size: 26px;
-  font-weight: 900;
   letter-spacing: 2px;
+  color: #222;
 }
 
 .we-logo-we {
-  color: #ffffff;
+  font-weight: 800;
+  color: #000;
 }
 
-.we-logo-dot,
-.we-logo-retail {
+.we-logo-dot {
   color: #eb1c24;
+  font-weight: 800;
 }
 
+.we-logo-retail {
+  font-weight: 300;
+  color: #444;
+}
+
+/* Primary Nav Links */
 .we-nav {
   display: flex;
-  gap: 20px;
+  gap: 32px;
 }
 
 .we-nav a {
-  color: #e0e0e0;
-  font-size: 13px;
+  color: #222;
+  font-family: var(--heading-font-family, 'Montserrat', sans-serif);
+  font-size: 14px;
   font-weight: 700;
+  text-transform: uppercase;
   letter-spacing: 1.5px;
   text-decoration: none;
-  padding: 6px 4px;
-  transition: color 0.2s ease;
+  padding-bottom: 4px;
+  transition: color 0.2s ease, border-color 0.2s ease;
+  border-bottom: 2px solid transparent;
 }
 
 .we-nav a:hover {
   color: #eb1c24;
+  border-bottom: 2px solid #eb1c24;
 }
 
-.we-search-btn {
-  display: inline-flex;
+/* Header Actions (Search / Cart) */
+.we-actions {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  background-color: #eb1c24;
-  color: #ffffff;
-  text-decoration: none;
-  font-size: 16px;
-  border-radius: 2px;
+  gap: 18px;
 }
 
+.we-search-input {
+  border: 1px solid #ccc;
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: 0;
+  outline: none;
+}
+
+.we-search-input:focus {
+  border-color: #eb1c24;
+}
