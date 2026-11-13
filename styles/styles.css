@@ -46,9 +46,9 @@ div.hero,
 }
 
 /* Bounded Content Containers for both EDS standalone and Universal Editor Crosswalk DOM */
-div[data-aue-model="section"] > div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata),
-main > .section > div:not(.hero-wrapper),
-main > div > div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata) {
+div[data-aue-model="section"]>div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata),
+main>.section>div:not(.hero-wrapper),
+main>div>div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata) {
   margin-left: auto;
   margin-right: auto;
   padding-left: 12px;
@@ -58,25 +58,28 @@ main > div > div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata) 
 }
 
 @media (min-width: 768px) {
-  div[data-aue-model="section"] > div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata),
-  main > .section > div:not(.hero-wrapper),
-  main > div > div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata) {
+
+  div[data-aue-model="section"]>div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata),
+  main>.section>div:not(.hero-wrapper),
+  main>div>div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata) {
     max-width: 744px;
   }
 }
 
 @media (min-width: 992px) {
-  div[data-aue-model="section"] > div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata),
-  main > .section > div:not(.hero-wrapper),
-  main > div > div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata) {
+
+  div[data-aue-model="section"]>div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata),
+  main>.section>div:not(.hero-wrapper),
+  main>div>div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata) {
     max-width: 964px;
   }
 }
 
 @media (min-width: 1248px) {
-  div[data-aue-model="section"] > div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata),
-  main > .section > div:not(.hero-wrapper),
-  main > div > div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata) {
+
+  div[data-aue-model="section"]>div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata),
+  main>.section>div:not(.hero-wrapper),
+  main>div>div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata) {
     max-width: 1224px;
   }
 }
@@ -84,7 +87,12 @@ main > div > div:not(.hero):not([data-aue-model="hero"]):not(.section-metadata) 
 /* ==========================================================================
    GAP-04: Section Headings
    ========================================================================== */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--heading-font-family, 'Montserrat', 'Helvetica Neue', Helvetica, Arial, sans-serif);
   font-weight: 700;
   color: var(--body-color, #222);
