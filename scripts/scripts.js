@@ -143,11 +143,70 @@ function decorateButtons(main) {
 }
 
 /**
+ * Resolves We.Retail DAM asset references to repository-hosted media.
+ * Normalizes JCR paths and maps whitespace-containing assets to URL-safe aliases.
+ * @param {Element} main The main container element
+ */
+function normalizeMediaSources(main) {
+  const damPrefix = '/content/dam/we-retail/';
+  const basePath = window.hlx?.codeBasePath || '';
+
+  // Central asset alias map for URL-safe delivery
+  const ALIAS_MAP = {
+    'El Gordo Green.jpg': 'El-Gordo-Green.jpg',
+  };
+
+  function resolveMediaUrl(rawSrc) {
+    if (!rawSrc) return rawSrc;
+    const isDam = rawSrc.includes(damPrefix);
+    const isMedia = rawSrc.startsWith('/media/') || rawSrc.includes('/media/');
+
+    if (isDam || isMedia) {
+      const [pathOnly, queryOrHash] = rawSrc.split(/([?#].*)/, 2);
+      let fileName = decodeURIComponent(pathOnly.split('/').pop());
+
+      if (ALIAS_MAP[fileName]) {
+        fileName = ALIAS_MAP[fileName];
+      }
+
+      const encodedFile = encodeURIComponent(fileName);
+      return `${basePath}/media/${encodedFile}${queryOrHash || ''}`;
+    }
+    return rawSrc;
+  }
+
+  main.querySelectorAll('img').forEach((img) => {
+    const src = img.getAttribute('src');
+    if (src && (src.includes(damPrefix) || src.includes('El Gordo Green.jpg') || src.startsWith('/media/'))) {
+      if (src.includes(damPrefix) || src.includes('El Gordo Green.jpg')) {
+        img.setAttribute('data-original-source', src);
+      }
+      img.src = resolveMediaUrl(src);
+    }
+  });
+
+  main.querySelectorAll('source').forEach((source) => {
+    const srcset = source.getAttribute('srcset');
+    if (srcset && (srcset.includes(damPrefix) || srcset.includes('El Gordo Green.jpg') || srcset.includes('/media/'))) {
+      if (srcset.includes(damPrefix) || srcset.includes('El Gordo Green.jpg')) {
+        source.setAttribute('data-original-source', srcset);
+      }
+      source.srcset = srcset.replace(/(?:\/content\/dam\/we-retail\/[^\s,]+?\/|\/media\/)([^\s,?#]+)/g, (match, fileName) => {
+        let decoded = decodeURIComponent(fileName);
+        if (ALIAS_MAP[decoded]) decoded = ALIAS_MAP[decoded];
+        return `${basePath}/media/${encodeURIComponent(decoded)}`;
+      });
+    }
+  });
+}
+
+/**
  * Decorates the main element.
  * @param {Element} main The main element
  */
 // eslint-disable-next-line import/prefer-default-export
 export function decorateMain(main) {
+  normalizeMediaSources(main);
   decorateIcons(main);
   buildAutoBlocks(main);
   decorateSections(main);

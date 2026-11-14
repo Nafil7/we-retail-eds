@@ -1,87 +1,254 @@
-header .header {
+/* ==========================================================================
+   We.Retail Official Header Styles
+   Matches AEM 6.5 weretail/components/structure/header
+   ========================================================================== */
+
+header {
+  position: relative;
+  z-index: 1000;
   width: 100%;
+  background-color: #fff;
+  border-bottom: 1px solid #e5e5e5;
 }
 
+/* 1. Black Utility Bar */
 .we-header-utility {
-  background-color: #111111;
-  color: #ffffff;
-  border-bottom: 1px solid #333333;
+  background-color: #000;
+  color: #ccc;
   font-size: 11px;
-  font-weight: 700;
-  padding: 6px 0;
+  font-family: var(--body-font-family, sans-serif);
+  height: 32px;
+  display: flex;
+  align-items: center;
+  position: relative;
 }
 
-.we-header-container {
-  max-width: 1200px;
+.we-header-utility .we-header-container {
+  width: 100%;
+  max-width: 1170px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 15px;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.we-user-nav a {
-  color: #cccccc;
-  margin-left: 16px;
+.we-lang {
+  cursor: pointer;
+  position: relative;
+  user-select: none;
+}
+
+.we-lang-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  min-width: 160px;
+  z-index: 1001;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+}
+
+.we-lang.open .we-lang-dropdown {
+  display: block;
+}
+
+.we-lang-dropdown a {
+  display: block;
+  padding: 8px 12px;
+  color: #ccc;
   text-decoration: none;
+  margin-left: 0 !important;
   font-size: 11px;
-  letter-spacing: 1px;
+  border-bottom: 1px solid #2a2a2a;
 }
 
-.we-user-nav a:hover {
-  color: #ffffff;
+.we-lang-dropdown a:hover,
+.we-lang-dropdown a.active {
+  background: #333;
+  color: #fff;
 }
 
-.we-header-main {
-  background-color: #1a1a1a;
-  padding: 14px 0;
-}
-
-.we-logo a {
+.we-header-utility a {
+  color: #ccc;
   text-decoration: none;
+  margin-left: 20px;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.we-header-utility a:hover {
+  color: #fff;
+}
+
+/* 2. Main White Navigation Bar */
+.we-header-main {
+  background-color: #fff;
+  height: 75px;
+  display: flex;
+  align-items: center;
+}
+
+.we-header-main .we-header-container {
+  width: 100%;
+  max-width: 1170px;
+  margin: 0 auto;
+  padding: 0 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Logo */
+.we-logo a {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  font-family: var(--heading-font-family, 'Montserrat', sans-serif);
   font-size: 26px;
-  font-weight: 900;
   letter-spacing: 2px;
+  color: #222;
 }
 
 .we-logo-we {
-  color: #ffffff;
+  font-weight: 800;
+  color: #000;
 }
 
-.we-logo-dot,
-.we-logo-retail {
+.we-logo-dot {
   color: #eb1c24;
+  font-weight: 800;
 }
 
+.we-logo-retail {
+  font-weight: 300;
+  color: #444;
+}
+
+/* Primary Nav Links */
 .we-nav {
   display: flex;
-  gap: 20px;
+  gap: 32px;
 }
 
 .we-nav a {
-  color: #e0e0e0;
-  font-size: 13px;
+  color: #222;
+  font-family: var(--heading-font-family, 'Montserrat', sans-serif);
+  font-size: 14px;
   font-weight: 700;
+  text-transform: uppercase;
   letter-spacing: 1.5px;
   text-decoration: none;
-  padding: 6px 4px;
-  transition: color 0.2s ease;
+  padding-bottom: 4px;
+  transition: color 0.2s ease, border-color 0.2s ease;
+  border-bottom: 2px solid transparent;
 }
 
 .we-nav a:hover {
   color: #eb1c24;
+  border-bottom: 2px solid #eb1c24;
+}
+
+/* Header Actions (Search / Cart) */
+.we-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.we-search-form {
+  margin: 0;
+  display: flex;
+  align-items: center;
+}
+
+.we-search-input {
+  border: 1px solid #ccc;
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: 0;
+  outline: none;
+  width: 140px;
+  transition: width 0.3s ease;
+}
+
+.we-search-input:focus {
+  border-color: #eb1c24;
 }
 
 .we-search-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  background-color: #eb1c24;
-  color: #ffffff;
-  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
   font-size: 16px;
-  border-radius: 2px;
+  padding: 4px;
 }
 
+@media (max-width: 991px) {
+  .we-header-main .we-header-container {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 10px 15px;
+  }
+  .we-nav {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    gap: 16px;
+    padding: 8px 0;
+  }
+  .we-header-utility .we-header-container {
+    padding: 0 15px;
+  }
+  .we-user-nav {
+    overflow-x: auto;
+  }
+  .we-user-nav a {
+    margin-left: 12px;
+  }
+}
+
+@media (max-width: 575px) {
+  .we-header-utility {
+    height: 28px;
+    font-size: 10px;
+  }
+  .we-header-utility .we-header-container {
+    padding: 0 10px;
+  }
+  .we-user-nav a:not(.we-cart) {
+    display: none;
+  }
+  .we-header-main {
+    height: auto;
+  }
+  .we-header-main .we-header-container {
+    padding: 8px 10px;
+  }
+  .we-logo a {
+    font-size: 20px;
+    letter-spacing: 1px;
+  }
+  .we-nav {
+    gap: 14px;
+    padding: 6px 0 2px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .we-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .we-nav a {
+    font-size: 12px;
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+  .we-search-input {
+    width: 90px;
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+}
