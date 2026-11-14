@@ -2,12 +2,89 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Carousel Behavioral Test</title>
-  <link rel="stylesheet" href="../../styles/styles.css">
-  <link rel="stylesheet" href="../../blocks/carousel/carousel.css">
+  <title>Carousel Behavioral Test Suite</title>
+  <link rel="stylesheet" href="../styles/styles.css">
+  <link rel="stylesheet" href="../blocks/carousel/carousel.css">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      padding: 24px;
+      max-width: 960px;
+      margin: 0 auto;
+      background: #f8f9fa;
+      color: #212529;
+    }
+    #test-summary {
+      padding: 16px 20px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    #test-summary.pass {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    #test-summary.fail {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .test-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 28px;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .test-table th, .test-table td {
+      padding: 10px 14px;
+      border: 1px solid #dee2e6;
+      text-align: left;
+    }
+    .test-table th {
+      background: #e9ecef;
+      font-weight: 600;
+    }
+    .badge-pass {
+      background: #28a745;
+      color: #fff;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .badge-fail {
+      background: #dc3545;
+      color: #fff;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .carousel {
+      margin-top: 24px;
+      border: 1px solid #ccc;
+    }
+  </style>
 </head>
 <body>
-  <div id="test-results"></div>
+  <h1>Carousel Behavioral & Accessibility Test Suite</h1>
+  <div id="test-summary">Running tests...</div>
+  <table class="test-table">
+    <thead>
+      <tr>
+        <th style="width: 60px;">#</th>
+        <th>Test Description</th>
+        <th style="width: 90px;">Result</th>
+        <th>Details</th>
+      </tr>
+    </thead>
+    <tbody id="test-rows"></tbody>
+  </table>
+
+  <h2>Test Sandbox Fixture</h2>
   <div class="carousel" id="carousel-test">
     <div>
       <div><picture><img src="/img1.jpg" alt="Slide 1"></picture></div>
@@ -23,58 +100,199 @@
     </div>
   </div>
 
+  <div id="external-focus-target" tabindex="0" style="margin-top: 16px; padding: 8px; background: #eee;">
+    External Focus Target (Outside Carousel)
+  </div>
+
   <script type="module">
-    import decorate from '../../blocks/carousel/carousel.js';
+    // Install controlled deterministic fake timer before importing decorator
+    const activeTimers = new Map();
+    let nextTimerId = 1;
+
+    window.__carouselActiveTimers = activeTimers;
+    window.setInterval = (fn, ms) => {
+      const id = nextTimerId++;
+      activeTimers.set(id, { fn, ms });
+      return id;
+    };
+    window.clearInterval = (id) => {
+      activeTimers.delete(id);
+    };
+    window.advanceTimers = (ms) => {
+      for (const [id, item] of activeTimers.entries()) {
+        item.fn();
+      }
+    };
+
+    import decorate from '../blocks/carousel/carousel.js';
+
     const block = document.getElementById('carousel-test');
     decorate(block);
 
     const log = [];
-    function assert(desc, condition) {
-      log.push({ desc, pass: !!condition });
+    let testIndex = 0;
+    const testRows = document.getElementById('test-rows');
+    const testSummary = document.getElementById('test-summary');
+
+    function assert(desc, condition, details = '') {
+      testIndex++;
+      const pass = !!condition;
+      log.push({ index: testIndex, desc, pass, details });
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${testIndex}</td>
+        <td>${desc}</td>
+        <td><span class="${pass ? 'badge-pass' : 'badge-fail'}">${pass ? 'PASS' : 'FAIL'}</span></td>
+        <td>${details || (pass ? 'OK' : 'Condition failed')}</td>
+      `;
+      testRows.appendChild(tr);
+
+      if (!pass) {
+        console.error(`Assertion ${testIndex} FAILED: ${desc}`, details);
+      }
     }
 
     const slides = block.querySelectorAll('.carousel-slide');
     const indicators = block.querySelectorAll('.carousel-indicator');
+    const prevBtn = block.querySelector('.carousel-btn.prev');
+    const nextBtn = block.querySelector('.carousel-btn.next');
+    const outsideTarget = document.getElementById('external-focus-target');
 
-    // Test 1: Decorate structure & ARIA
-    assert('3 slides created', slides.length === 3);
-    assert('Slide 0 active initially', slides[0].classList.contains('active'));
-    assert('Slide 0 role tabpanel', slides[0].getAttribute('role') === 'tabpanel');
-    assert('Slide 0 aria-hidden false', slides[0].getAttribute('aria-hidden') === 'false');
-    assert('Slide 1 aria-hidden true', slides[1].getAttribute('aria-hidden') === 'true');
-    assert('3 indicators created', indicators.length === 3);
-    assert('Indicator 0 selected', indicators[0].getAttribute('aria-selected') === 'true');
+    // 1. Initial slide state
+    assert('1. Exactly 3 slides created', slides.length === 3);
+    assert('2. Slide 0 active initially', slides[0].classList.contains('active'));
+    assert('3. Slide 0 aria-hidden is false', slides[0].getAttribute('aria-hidden') === 'false');
+    assert('4. Slide 1 aria-hidden is true', slides[1].getAttribute('aria-hidden') === 'true');
+    assert('5. Slide 2 aria-hidden is true', slides[2].getAttribute('aria-hidden') === 'true');
+    assert('6. Exactly 3 indicators created', indicators.length === 3);
+    assert('7. Indicator 0 selected', indicators[0].getAttribute('aria-selected') === 'true');
+    assert('8. Indicator 1 unselected', indicators[1].getAttribute('aria-selected') === 'false');
+    assert('9. Indicator 2 unselected', indicators[2].getAttribute('aria-selected') === 'false');
+    assert('10. Autoplay timer initialized', activeTimers.size === 1);
 
-    // Test 2: Indicator click
+    // 2. Indicator click navigation
     indicators[1].click();
-    assert('Slide 1 active after click', slides[1].classList.contains('active'));
-    assert('Slide 0 hidden after click', slides[0].getAttribute('aria-hidden') === 'true');
-    assert('Indicator 1 selected after click', indicators[1].getAttribute('aria-selected') === 'true');
+    assert('11. Slide 1 active after click', slides[1].classList.contains('active'));
+    assert('12. Slide 0 hidden after click', slides[0].getAttribute('aria-hidden') === 'true');
+    assert('13. Indicator 1 selected after click', indicators[1].getAttribute('aria-selected') === 'true');
 
-    // Test 3: Keyboard navigation
-    block.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
-    assert('Slide 2 active after ArrowRight', slides[2].classList.contains('active'));
+    indicators[2].click();
+    assert('14. Slide 2 active after click', slides[2].classList.contains('active'));
+    assert('15. Indicator 2 selected after click', indicators[2].getAttribute('aria-selected') === 'true');
 
-    block.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
-    assert('Slide 1 active after ArrowLeft', slides[1].classList.contains('active'));
+    // 3. Previous and next controls
+    nextBtn.click(); // 2 -> 0 wrap-around
+    assert('16. Next button wraps to Slide 0', slides[0].classList.contains('active'));
+    assert('17. Indicator 0 selected after wrap-around', indicators[0].getAttribute('aria-selected') === 'true');
 
-    // Test 4: Autoplay advance
-    // Set a timeout to check autoplay after 5.5s
-    setTimeout(() => {
-      assert('Autoplay rotated slide automatically', slides[2].classList.contains('active'));
-      
-      // Test 5: Mouseenter pause
-      block.dispatchEvent(new MouseEvent('mouseenter'));
-      setTimeout(() => {
-        assert('Autoplay paused on mouseenter', slides[2].classList.contains('active'));
-        
-        // Write out test results to DOM
-        const resultsEl = document.getElementById('test-results');
-        resultsEl.textContent = JSON.stringify(log);
-        window.__CAROUSEL_TESTS_DONE = true;
-      }, 5500);
-    }, 5500);
+    prevBtn.click(); // 0 -> 2 wrap-around
+    assert('18. Prev button wraps to Slide 2', slides[2].classList.contains('active'));
+    assert('19. Indicator 2 selected after wrap-around', indicators[2].getAttribute('aria-selected') === 'true');
+
+    prevBtn.click(); // 2 -> 1
+    assert('20. Prev button moves to Slide 1', slides[1].classList.contains('active'));
+
+    // 4. Keyboard navigation & 5. Focus management (Finding 1)
+    // Step A: Keyboard focus reaches an indicator
+    indicators[1].focus();
+    assert('21. Keyboard focus reaches indicator 1', document.activeElement === indicators[1]);
+
+    // Step B: ArrowRight moves to next slide
+    indicators[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
+    assert('22. ArrowRight advances to Slide 2', slides[2].classList.contains('active'));
+    assert('23. Slide 2 aria-hidden is false', slides[2].getAttribute('aria-hidden') === 'false');
+    assert('24. Slide 1 aria-hidden is true', slides[1].getAttribute('aria-hidden') === 'true');
+    assert('25. Indicator 2 is selected (aria-selected=true)', indicators[2].getAttribute('aria-selected') === 'true');
+    assert('26. Indicator 1 is unselected (aria-selected=false)', indicators[1].getAttribute('aria-selected') === 'false');
+    assert('27. Indicator 2 receives keyboard focus', document.activeElement === indicators[2]);
+
+    // Step C: ArrowLeft moves to previous slide
+    indicators[2].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true }));
+    assert('28. ArrowLeft returns to Slide 1', slides[1].classList.contains('active'));
+    assert('29. Slide 1 aria-hidden is false', slides[1].getAttribute('aria-hidden') === 'false');
+    assert('30. Indicator 1 is selected (aria-selected=true)', indicators[1].getAttribute('aria-selected') === 'true');
+    assert('31. Indicator 1 receives keyboard focus', document.activeElement === indicators[1]);
+
+    // Step D: ArrowRight wraps around from slide 2 to slide 0
+    indicators[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
+    indicators[2].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
+    assert('32. ArrowRight wraps from Slide 2 to Slide 0', slides[0].classList.contains('active'));
+    assert('33. Indicator 0 receives keyboard focus', document.activeElement === indicators[0]);
+
+    // 6. Autoplay after five seconds (Finding 2)
+    // Blur to outside target to remove focus
+    outsideTarget.focus();
+    assert('34. Autoplay timer active when no hover and no focus', activeTimers.size === 1);
+    window.advanceTimers(5000);
+    assert('35. Autoplay advances to Slide 1 after 5000ms', slides[1].classList.contains('active'));
+    window.advanceTimers(5000);
+    assert('36. Autoplay advances to Slide 2 after another 5000ms', slides[2].classList.contains('active'));
+
+    // 7. Pause on pointer hover
+    block.dispatchEvent(new MouseEvent('mouseenter'));
+    assert('37. Autoplay timer paused on mouseenter', activeTimers.size === 0);
+    window.advanceTimers(5000);
+    assert('38. Slide does not advance while hovered', slides[2].classList.contains('active'));
+
+    // 8. Pause on keyboard focus
+    block.dispatchEvent(new MouseEvent('mouseleave'));
+    assert('39. Autoplay timer resumes on mouseleave', activeTimers.size === 1);
+    prevBtn.focus();
+    assert('40. Autoplay timer paused on keyboard focus (focusin)', activeTimers.size === 0);
+    window.advanceTimers(5000);
+    assert('41. Slide does not advance while focused', slides[2].classList.contains('active'));
+
+    // 9. Focus movement between internal controls does not resume autoplay
+    nextBtn.focus();
+    assert('42. Focus movement from prevBtn to nextBtn does not resume autoplay', activeTimers.size === 0);
+    indicators[0].focus();
+    assert('43. Focus movement from nextBtn to indicator 0 does not resume autoplay', activeTimers.size === 0);
+    window.advanceTimers(5000);
+    assert('44. Slide remains static during internal focus shifts', slides[2].classList.contains('active'));
+
+    // 10. Pointer leaving while focus remains inside does not resume autoplay
+    block.dispatchEvent(new MouseEvent('mouseenter'));
+    block.dispatchEvent(new MouseEvent('mouseleave'));
+    assert('45. Pointer leaving while focus remains inside does not resume autoplay', activeTimers.size === 0);
+    window.advanceTimers(5000);
+    assert('46. Slide remains static when pointer leaves while focused', slides[2].classList.contains('active'));
+
+    // 11. Focus leaving while pointer remains inside does not resume autoplay
+    block.dispatchEvent(new MouseEvent('mouseenter'));
+    outsideTarget.focus();
+    assert('47. Focus leaving while pointer remains inside does not resume autoplay', activeTimers.size === 0);
+    window.advanceTimers(5000);
+    assert('48. Slide remains static when focus leaves while pointer hovered', slides[2].classList.contains('active'));
+
+    // 12. Autoplay resumes after both pointer and focus leave
+    block.dispatchEvent(new MouseEvent('mouseleave'));
+    assert('49. Autoplay timer resumes when both pointer and focus leave', activeTimers.size === 1);
+    window.advanceTimers(5000);
+    assert('50. Slide advances to Slide 0 after both leave', slides[0].classList.contains('active'));
+    window.advanceTimers(5000);
+    assert('51. Slide advances to Slide 1 after another cycle', slides[1].classList.contains('active'));
+
+    // Final summary
+    const failures = log.filter(item => !item.pass);
+    const allPassed = failures.length === 0;
+
+    if (allPassed) {
+      testSummary.className = 'pass';
+      testSummary.textContent = `ALL ${log.length} ASSERTIONS PASSED SUCCESSFULLY`;
+    } else {
+      testSummary.className = 'fail';
+      testSummary.textContent = `FAILED: ${failures.length} of ${log.length} assertions failed!`;
+    }
+
+    window.__CAROUSEL_TEST_RESULTS = {
+      passed: log.length - failures.length,
+      failed: failures.length,
+      total: log.length,
+      allPassed,
+      log
+    };
+    window.__CAROUSEL_TESTS_DONE = true;
   </script>
 </body>
 </html>
-

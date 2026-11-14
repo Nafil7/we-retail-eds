@@ -81,9 +81,12 @@ export default function decorate(block) {
   prevBtn.addEventListener('click', () => showSlide(currentIdx - 1));
   nextBtn.addEventListener('click', () => showSlide(currentIdx + 1));
 
-  // 5000ms autoplay matching AEM Core Components data-cmp-delay="5000"
+  // State-managed autoplay lifecycle (5000ms matching AEM Core Components data-cmp-delay="5000")
+  let isHovered = false;
+  let isFocused = false;
+
   function startAutoplay() {
-    if (!timer) {
+    if (!timer && !isHovered && !isFocused) {
       timer = setInterval(() => {
         showSlide(currentIdx + 1);
       }, 5000);
@@ -97,17 +100,49 @@ export default function decorate(block) {
     }
   }
 
-  block.addEventListener('mouseenter', pauseAutoplay);
-  block.addEventListener('mouseleave', startAutoplay);
-  block.addEventListener('focusin', pauseAutoplay);
-  block.addEventListener('focusout', startAutoplay);
+  function syncAutoplay() {
+    if (isHovered || isFocused) {
+      pauseAutoplay();
+    } else {
+      startAutoplay();
+    }
+  }
+
+  block.addEventListener('mouseenter', () => {
+    isHovered = true;
+    syncAutoplay();
+  });
+
+  block.addEventListener('mouseleave', () => {
+    isHovered = false;
+    syncAutoplay();
+  });
+
+  block.addEventListener('focusin', () => {
+    isFocused = true;
+    syncAutoplay();
+  });
+
+  block.addEventListener('focusout', (e) => {
+    // If focus moves to another control inside the carousel, do not treat focus as lost
+    if (e.relatedTarget && block.contains(e.relatedTarget)) {
+      return;
+    }
+    if (document.activeElement && block.contains(document.activeElement)) {
+      return;
+    }
+    isFocused = false;
+    syncAutoplay();
+  });
 
   // Keyboard navigation on indicators
   indicators.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowLeft') {
+      e.preventDefault();
       showSlide(currentIdx - 1);
       indicators.children[currentIdx].focus();
     } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
       showSlide(currentIdx + 1);
       indicators.children[currentIdx].focus();
     }
