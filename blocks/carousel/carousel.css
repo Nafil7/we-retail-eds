@@ -8,6 +8,8 @@
   width: 100%;
   margin: 30px auto 50px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .carousel-slides {
@@ -15,6 +17,7 @@
   width: 100%;
   background-color: #1a1a1a;
   overflow: hidden;
+  order: 1;
 }
 
 .carousel-slide {
@@ -84,6 +87,7 @@
   padding: 0;
   margin: 16px 0 0;
   gap: 12px;
+  order: 2;
 }
 
 .carousel-indicator {
@@ -169,7 +173,8 @@
 /* Accessible focus rings */
 .carousel-autoplay-btn:focus-visible,
 .carousel-btn:focus-visible,
-.carousel-indicator:focus-visible {
+.carousel-indicator:focus-visible,
+.carousel-slide:focus-visible {
   outline: 2px solid #eb1c24;
   outline-offset: 2px;
 }
