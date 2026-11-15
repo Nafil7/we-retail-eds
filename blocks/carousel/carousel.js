@@ -1,6 +1,10 @@
+let carouselCounter = 0;
+
 export default function decorate(block) {
   const slides = [...block.children];
   if (slides.length === 0) return;
+
+  const carouselId = ++carouselCounter;
 
   const slidesContainer = document.createElement('div');
   slidesContainer.className = 'carousel-slides';
@@ -8,12 +12,19 @@ export default function decorate(block) {
   const indicators = document.createElement('ol');
   indicators.className = 'carousel-indicators';
   indicators.setAttribute('role', 'tablist');
+  indicators.setAttribute('aria-label', 'Carousel slides');
+  indicators.setAttribute('aria-orientation', 'horizontal');
 
   slides.forEach((slide, idx) => {
+    const slideId = `carousel-${carouselId}-slide-${idx}`;
+    const tabId = `carousel-${carouselId}-tab-${idx}`;
+
+    slide.id = slideId;
     slide.className = 'carousel-slide';
     slide.setAttribute('role', 'tabpanel');
     slide.setAttribute('aria-roledescription', 'slide');
     slide.setAttribute('aria-label', `${idx + 1} of ${slides.length}`);
+    slide.setAttribute('aria-labelledby', tabId);
 
     // If slide has image + text cells, format as picture + caption
     const cells = [...slide.children];
@@ -29,22 +40,29 @@ export default function decorate(block) {
     if (idx === 0) {
       slide.classList.add('active');
       slide.setAttribute('aria-hidden', 'false');
+      slide.removeAttribute('inert');
     } else {
       slide.setAttribute('aria-hidden', 'true');
+      slide.setAttribute('inert', '');
     }
 
     slidesContainer.appendChild(slide);
 
-    // Indicator button
+    // Indicator button (WAI-ARIA Tab)
     const indicator = document.createElement('button');
+    indicator.id = tabId;
     indicator.className = 'carousel-indicator';
     indicator.setAttribute('role', 'tab');
     indicator.setAttribute('aria-label', `Slide ${idx + 1}`);
+    indicator.setAttribute('aria-controls', slideId);
+
     if (idx === 0) {
       indicator.classList.add('active');
       indicator.setAttribute('aria-selected', 'true');
+      indicator.setAttribute('tabindex', '0');
     } else {
       indicator.setAttribute('aria-selected', 'false');
+      indicator.setAttribute('tabindex', '-1');
     }
     indicator.addEventListener('click', () => showSlide(idx));
     indicators.appendChild(indicator);
@@ -65,17 +83,25 @@ export default function decorate(block) {
   let timer = null;
 
   function showSlide(newIdx) {
+    // Deactivate previous slide and indicator
     slides[currentIdx].classList.remove('active');
     slides[currentIdx].setAttribute('aria-hidden', 'true');
+    slides[currentIdx].setAttribute('inert', '');
+
     indicators.children[currentIdx].classList.remove('active');
     indicators.children[currentIdx].setAttribute('aria-selected', 'false');
+    indicators.children[currentIdx].setAttribute('tabindex', '-1');
 
     currentIdx = (newIdx + slides.length) % slides.length;
 
+    // Activate new slide and indicator
     slides[currentIdx].classList.add('active');
     slides[currentIdx].setAttribute('aria-hidden', 'false');
+    slides[currentIdx].removeAttribute('inert');
+
     indicators.children[currentIdx].classList.add('active');
     indicators.children[currentIdx].setAttribute('aria-selected', 'true');
+    indicators.children[currentIdx].setAttribute('tabindex', '0');
   }
 
   prevBtn.addEventListener('click', () => showSlide(currentIdx - 1));
@@ -135,7 +161,7 @@ export default function decorate(block) {
     syncAutoplay();
   });
 
-  // Keyboard navigation on indicators
+  // Keyboard navigation on indicators (WAI-ARIA tabs pattern: ArrowLeft, ArrowRight, Home, End)
   indicators.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowLeft') {
       e.preventDefault();
@@ -144,6 +170,14 @@ export default function decorate(block) {
     } else if (e.key === 'ArrowRight') {
       e.preventDefault();
       showSlide(currentIdx + 1);
+      indicators.children[currentIdx].focus();
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      showSlide(0);
+      indicators.children[currentIdx].focus();
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      showSlide(slides.length - 1);
       indicators.children[currentIdx].focus();
     }
   });
