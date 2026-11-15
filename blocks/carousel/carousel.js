@@ -211,7 +211,6 @@ export default function decorate(block) {
   let isPlaying = true;
   let isHovered = false;
   let isFocusStopped = false;
-  let isPointerInteraction = false;
 
   if (typeof window !== 'undefined' && window.matchMedia) {
     const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -284,18 +283,33 @@ export default function decorate(block) {
     indicators.children[currentIdx].setAttribute('tabindex', '0');
   }
 
-  // Finding 6: Track pointer modality to distinguish pointer-induced focus from keyboard focus
-  block.addEventListener('pointerdown', () => {
-    isPointerInteraction = true;
-  });
+  // Finding B: Robust pointer and keyboard modality tracking
+  let isPointerActive = false;
 
-  block.addEventListener('mousedown', () => {
-    isPointerInteraction = true;
-  });
+  const setPointerActive = () => {
+    isPointerActive = true;
+  };
+
+  const clearPointerActive = () => {
+    isPointerActive = false;
+  };
+
+  block.addEventListener('pointerdown', setPointerActive);
+  block.addEventListener('mousedown', setPointerActive);
+  block.addEventListener('pointerup', clearPointerActive);
+  block.addEventListener('mouseup', clearPointerActive);
+  block.addEventListener('pointercancel', clearPointerActive);
+
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('pointerup', clearPointerActive);
+    window.addEventListener('mouseup', clearPointerActive);
+    window.addEventListener('pointercancel', clearPointerActive);
+    window.addEventListener('keydown', clearPointerActive);
+  }
 
   // Autoplay button toggle
   autoplayBtn.addEventListener('click', () => {
-    isPointerInteraction = false;
+    isPointerActive = false;
     if (isPlaying && !isFocusStopped) {
       isPlaying = false;
       isFocusStopped = true;
@@ -326,8 +340,7 @@ export default function decorate(block) {
   });
 
   block.addEventListener('focusin', (e) => {
-    if (isPointerInteraction) {
-      isPointerInteraction = false;
+    if (isPointerActive) {
       return;
     }
 
@@ -360,13 +373,13 @@ export default function decorate(block) {
     }
   });
 
-  // Finding 2: DOM assembly order (W3C APG Tabbed Carousel sequence)
-  // 1. Rotation control -> 2. Prev button -> 3. Tablist -> 4. Next button -> 5. Slide content
+  // Finding A: DOM assembly order (W3C APG Tabbed Carousel sequence)
+  // 1. Rotation control -> 2. Prev button -> 3. Next button -> 4. Tablist -> 5. Slide content
   block.innerHTML = '';
   block.appendChild(autoplayBtn);
   block.appendChild(prevBtn);
-  block.appendChild(indicators);
   block.appendChild(nextBtn);
+  block.appendChild(indicators);
   block.appendChild(slidesContainer);
 
   syncAutoplay();

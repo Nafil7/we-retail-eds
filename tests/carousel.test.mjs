@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-console.log('--- Running Stage 7.4.1 Carousel Accessibility, APG & Modality Conformance Tests ---');
+console.log('--- Running Stage 7.4.2 Carousel Accessibility, APG & Modality Conformance Tests ---');
 
 // Controlled deterministic fake clock with active & historical tracking
 class FakeClock {
@@ -311,11 +311,27 @@ const clock = new FakeClock();
 globalThis.setInterval = clock.setInterval.bind(clock);
 globalThis.clearInterval = clock.clearInterval.bind(clock);
 let reducedMotionSetting = false;
+const windowListeners = new Map();
 globalThis.window = {
   matchMedia(query) {
     return {
       matches: query.includes('prefers-reduced-motion') ? reducedMotionSetting : false
     };
+  },
+  addEventListener(type, cb) {
+    if (!windowListeners.has(type)) windowListeners.set(type, []);
+    windowListeners.get(type).push(cb);
+  },
+  removeEventListener(type, cb) {
+    if (windowListeners.has(type)) {
+      const list = windowListeners.get(type);
+      const idx = list.indexOf(cb);
+      if (idx !== -1) list.splice(idx, 1);
+    }
+  },
+  dispatchEvent(event) {
+    const list = windowListeners.get(event.type) || [];
+    for (const cb of list) cb(event);
   }
 };
 const elementsById = new Map();
@@ -387,16 +403,16 @@ function createTestCarouselWithHeading(headingText = 'Discover the Finest Gear',
 
 const { headingEl, block } = createTestCarouselWithHeading();
 
-// Finding 2 DOM order verification:
+// Finding A DOM order verification:
 // Child 0: autoplayBtn
 // Child 1: prevBtn
-// Child 2: indicators (tablist)
-// Child 3: nextBtn
+// Child 2: nextBtn
+// Child 3: indicators (tablist)
 // Child 4: slidesContainer
 const autoplayBtn = block.children[0];
 const prevBtn = block.children[1];
-const indicatorsContainer = block.children[2];
-const nextBtn = block.children[3];
+const nextBtn = block.children[2];
+const indicatorsContainer = block.children[3];
 const slidesContainer = block.children[4];
 
 const slides = slidesContainer.children;
@@ -410,12 +426,12 @@ assert.strictEqual(block.getAttribute('role'), 'region', 'FAIL: Carousel contain
 assert.strictEqual(block.getAttribute('aria-roledescription'), 'carousel', 'FAIL: Container must have aria-roledescription="carousel"');
 console.log('✓ Test 1 Passed: Carousel accessible name correctly derived from visible heading via aria-labelledby.');
 
-// 2. Finding 2: DOM Assembly Order (W3C APG Tabbed Carousel Interaction Sequence)
+// 2. Finding A: DOM Assembly Order (W3C APG Tabbed Carousel Interaction Sequence)
 assert.strictEqual(autoplayBtn.tagName, 'BUTTON', 'FAIL: Child 0 must be autoplay button');
 assert.strictEqual(autoplayBtn.className, 'carousel-autoplay-btn', 'FAIL: Child 0 must be autoplay button');
 assert.strictEqual(prevBtn.className, 'carousel-btn prev', 'FAIL: Child 1 must be prev button');
-assert.strictEqual(indicatorsContainer.getAttribute('role'), 'tablist', 'FAIL: Child 2 must be tablist indicators');
-assert.strictEqual(nextBtn.className, 'carousel-btn next', 'FAIL: Child 3 must be next button');
+assert.strictEqual(nextBtn.className, 'carousel-btn next', 'FAIL: Child 2 must be next button');
+assert.strictEqual(indicatorsContainer.getAttribute('role'), 'tablist', 'FAIL: Child 3 must be tablist indicators');
 assert.strictEqual(slidesContainer.className, 'carousel-slides', 'FAIL: Child 4 must be slides container');
 console.log('✓ Test 2 Passed: DOM order adheres to W3C APG: Controls & tablist precede slide content.');
 
@@ -488,12 +504,15 @@ console.log('✓ Test 4 Passed: Single-slide edge case degrades cleanly without 
 assert.strictEqual(slidesContainer.getAttribute('aria-atomic'), 'false', 'FAIL: Live region must have aria-atomic="false" per W3C APG');
 console.log('✓ Test 5 Passed: Live region configured with aria-atomic="false".');
 
-// 6. Finding 6: Pointer Modality & Mouse Click Stop/Start Reliability
+// 6. Finding B: Pointer Modality & Mouse Click Stop/Start Reliability
 // When mouse clicks autoplay button: mousedown/pointerdown sets modality -> focusin does NOT trigger premature focus-stop!
+block.dispatchEvent({ type: 'pointerdown', bubbles: true });
 block.dispatchEvent({ type: 'mousedown', bubbles: true });
 autoplayBtn.focus();
 // Autoplay button should still reflect rotating state until click event fires
 assert.strictEqual(autoplayBtn.getAttribute('aria-label'), 'Stop slide rotation', 'FAIL: Mouse focus must NOT prematurely stop rotation before click');
+block.dispatchEvent({ type: 'pointerup', bubbles: true });
+block.dispatchEvent({ type: 'mouseup', bubbles: true });
 autoplayBtn.click();
 assert.strictEqual(autoplayBtn.getAttribute('aria-label'), 'Start slide rotation', 'FAIL: Mouse click on Stop must stop rotation');
 assert.strictEqual(clock.activeTimerCount, 0, 'FAIL: Timer must be cancelled after explicit Stop');
@@ -504,28 +523,54 @@ block.dispatchEvent({ type: 'mouseleave', bubbles: false });
 assert.strictEqual(clock.activeTimerCount, 0, 'FAIL: Mouse leave must not override explicit Stop');
 
 // Mouse click on Start must start rotation
+block.dispatchEvent({ type: 'pointerdown', bubbles: true });
 block.dispatchEvent({ type: 'mousedown', bubbles: true });
 autoplayBtn.focus();
+block.dispatchEvent({ type: 'pointerup', bubbles: true });
+block.dispatchEvent({ type: 'mouseup', bubbles: true });
 autoplayBtn.click();
 assert.strictEqual(autoplayBtn.getAttribute('aria-label'), 'Stop slide rotation', 'FAIL: Mouse click on Start must start rotation');
 assert.strictEqual(clock.activeTimerCount, 1, 'FAIL: Timer must restart after explicit Start');
-console.log('✓ Test 6 Passed: Pointer interaction modality prevents accidental focus-stop reversal.');
 
-// 7. Keyboard Focus Entry Permanently Stops Rotation
-// Blur outside first
+// Finding B Test: Stale Pointer Modality Regression
+// A pointer interaction on a non-focusable slide element must NOT suppress subsequent keyboard focus
+const slideImage = slides[0].querySelector('img') || slides[0].children[0];
+slideImage.dispatchEvent({ type: 'pointerdown', bubbles: true });
+slideImage.dispatchEvent({ type: 'mousedown', bubbles: true });
+slideImage.dispatchEvent({ type: 'pointerup', bubbles: true });
+slideImage.dispatchEvent({ type: 'mouseup', bubbles: true });
+slideImage.click();
+
+// Move pointer outside
+block.dispatchEvent({ type: 'mouseleave', bubbles: false });
+assert.strictEqual(clock.activeTimerCount, 1, 'FAIL: Autoplay should still be running while pointer left and no keyboard focus');
+
+// Now real keyboard focus enters carousel from outside
 const outsideEl = new MockElement('div');
 autoplayBtn.blur(outsideEl);
-assert.strictEqual(clock.activeTimerCount, 1, 'FAIL: Still rotating while no keyboard focus has entered');
-
-// Real keyboard focus enters (no mousedown event)
+globalThis.window.dispatchEvent({ type: 'keydown', key: 'Tab' });
 autoplayBtn.focus();
-assert.strictEqual(clock.activeTimerCount, 0, 'FAIL: Keyboard focus enter permanently stops rotation');
+assert.strictEqual(clock.activeTimerCount, 0, 'FAIL: Keyboard focus must stop rotation immediately even after pointer click on non-focusable element');
 assert.strictEqual(autoplayBtn.getAttribute('aria-label'), 'Start slide rotation', 'FAIL: Button updates to Start on keyboard focus enter');
+console.log('✓ Test 6 Passed: Pointer interaction modality prevents accidental focus-stop reversal and avoids stale pointer state.');
+
+// 7. Keyboard Stop and Start (Enter and Space Keys)
+// Currently focused on autoplayBtn, rotation is stopped. Press Enter to Start:
+globalThis.window.dispatchEvent({ type: 'keydown', key: 'Enter' });
+autoplayBtn.click(); // Enter on focused button triggers click
+assert.strictEqual(autoplayBtn.getAttribute('aria-label'), 'Stop slide rotation', 'FAIL: Enter key on Start must start rotation');
+assert.strictEqual(clock.activeTimerCount, 1, 'FAIL: Timer must restart after Enter on Start');
+
+// Press Space on focused autoplayBtn to Stop:
+globalThis.window.dispatchEvent({ type: 'keydown', key: ' ' });
+autoplayBtn.click(); // Space on focused button triggers click
+assert.strictEqual(autoplayBtn.getAttribute('aria-label'), 'Start slide rotation', 'FAIL: Space key on Stop must stop rotation');
+assert.strictEqual(clock.activeTimerCount, 0, 'FAIL: Timer must stop after Space on Stop');
 
 // Blur outside does NOT resume
 autoplayBtn.blur(outsideEl);
 assert.strictEqual(clock.activeTimerCount, 0, 'FAIL: Blur outside does not resume rotation');
-console.log('✓ Test 7 Passed: Pure keyboard focus entry permanently stops rotation.');
+console.log('✓ Test 7 Passed: Keyboard Enter and Space controls and focus stop fully verified.');
 
 // 8. Multiple Carousel Instances with Independent Headings
 const instanceA = createTestCarouselWithHeading('Heading A', ['A1', 'A2']);
@@ -556,4 +601,4 @@ assert.strictEqual(indicators[1].getAttribute('tabindex'), '0');
 assert.strictEqual(slides[1].getAttribute('tabindex'), '0');
 console.log('✓ Test 9 Passed: ArrowRight navigates slide, selects tab, and synchronizes panel tabindex.');
 
-console.log('--- All 9 Stage 7.4.1 Carousel Conformance Tests Passed Successfully ---');
+console.log('--- All 9 Stage 7.4.2 Carousel Conformance Tests Passed Successfully ---');

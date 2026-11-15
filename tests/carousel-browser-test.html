@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Carousel Behavioral, Timing & Accessibility Test Suite (Stage 7.4.1)</title>
+  <title>Carousel Behavioral, Timing & Accessibility Test Suite (Stage 7.4.2)</title>
   <link rel="stylesheet" href="../styles/styles.css">
   <link rel="stylesheet" href="../blocks/carousel/carousel.css">
   <style>
@@ -70,7 +70,7 @@
   </style>
 </head>
 <body>
-  <h1>Carousel Behavioral, Timing & Accessibility Test Suite (Stage 7.4.1)</h1>
+  <h1>Carousel Behavioral, Timing & Accessibility Test Suite (Stage 7.4.2)</h1>
   <div id="test-summary">Running tests...</div>
   <table class="test-table">
     <thead>
@@ -255,16 +255,16 @@
       }
     }
 
-    // Finding 2 DOM order verification:
+    // Finding A: DOM order verification (W3C APG Tabbed Carousel sequence):
     // Child 0: autoplayBtn
     // Child 1: prevBtn
-    // Child 2: indicatorsContainer
-    // Child 3: nextBtn
+    // Child 2: nextBtn
+    // Child 3: indicatorsContainer
     // Child 4: slidesContainer
     const autoplayBtn = block.children[0];
     const prevBtn = block.children[1];
-    const indicatorsContainer = block.children[2];
-    const nextBtn = block.children[3];
+    const nextBtn = block.children[2];
+    const indicatorsContainer = block.children[3];
     const slidesContainer = block.children[4];
 
     const slides = slidesContainer.querySelectorAll('.carousel-slide');
@@ -278,11 +278,11 @@
     assert('4. Container does not have hardcoded aria-label when heading exists', !block.hasAttribute('aria-label'));
     assert('5. Container has unique ID', block.id && block.id.length > 0);
 
-    // Section 2: Finding 2 — DOM Order / Tab Sequence (Controls & Tablist Precede Slide Content)
+    // Section 2: Finding A — DOM Order / Tab Sequence (Controls & Tablist Precede Slide Content)
     assert('6. Autoplay button is child 0 in DOM order', block.children[0] === autoplayBtn);
     assert('7. Previous button is child 1 in DOM order', block.children[1] === prevBtn);
-    assert('8. Indicators tablist is child 2 in DOM order', block.children[2] === indicatorsContainer);
-    assert('9. Next button is child 3 in DOM order', block.children[3] === nextBtn);
+    assert('8. Next button is child 2 in DOM order', block.children[2] === nextBtn);
+    assert('9. Indicators tablist is child 3 in DOM order', block.children[3] === indicatorsContainer);
     assert('10. Slides container is child 4 in DOM order', block.children[4] === slidesContainer);
 
     // Section 3: Workstream C — Autoplay Control Button

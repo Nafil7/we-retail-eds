@@ -149,11 +149,11 @@ class CDPClient {
 }
 
 async function run() {
-  console.log('--- Starting Stage 7.4.1 Real Browser CDP Conformance & APG Verification ---');
+  console.log('--- Starting Stage 7.4.2 Real Browser CDP Conformance & APG Verification ---');
   const server = await startServer(8996);
   console.log('HTTP Server listening on http://127.0.0.1:8996');
 
-  const tempProfileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'chrome-cdp-741-'));
+  const tempProfileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'chrome-cdp-742-'));
   const chromeProc = spawn(chromeExe, [
     '--headless=new',
     '--remote-debugging-port=9223',
@@ -211,7 +211,7 @@ async function run() {
   console.log(`✓ In-Page Browser Test Suite: 100% Passed (${results.passed}/${results.total} assertions)`);
 
   // STEP 2: Real Browser Keystroke & Mouse Automation on rendered-migrated-page.html
-  console.log('\n--- Step 2: Executing Real-Browser Keystroke & Pointer Automation (Findings 1-7) ---');
+  console.log('\n--- Step 2: Executing Real-Browser Keystroke & Pointer Automation (Findings A, B & Stage 7.4.2 Requirements) ---');
   await cdp.send('Page.navigate', { url: 'http://127.0.0.1:8996/rendered-migrated-page.html' });
   await new Promise(r => setTimeout(r, 600));
 
@@ -238,8 +238,8 @@ async function run() {
   }
   console.log('✓ Finding 1 Passed: Carousel correctly linked to visible heading "Discover the Finest Gear" via aria-labelledby.');
 
-  // 2. Finding 2: Tab Sequence (Controls and Tablist Precede Slide Content)
-  console.log('\nVerifying Finding 2: Keyboard Tab Sequence');
+  // 2. Finding A / Test A: Correct Keyboard Tab Sequence and Tablist Exit
+  console.log('\nVerifying Finding A / Test A: Keyboard Tab Sequence and Tablist Exit');
   await cdp.eval('window.scrollTo(0, 0); document.body.focus();');
 
   const tabSequence = [];
@@ -270,92 +270,176 @@ async function run() {
     console.log(`  ${idx + 1}. [${step.tag}] class="${step.className}" role="${step.role}" label="${step.label?.slice(0, 30)}"`);
   });
 
-  // Verify order: Autoplay button -> Previous button -> Tab indicator -> Next button -> Slide panel -> Slide CTA link
+  // Required sequence:
+  // 1. Autoplay control
+  // 2. Previous button
+  // 3. Next button
+  // 4. Tablist active tab
+  // 5. Active tabpanel
+  // 6. Active slide CTA
   if (!tabSequence[0]?.className?.includes('carousel-autoplay-btn')) {
-    throw new Error('Finding 2 Failed: Autoplay button is not 1st in tab sequence');
+    throw new Error('Finding A Failed: Autoplay button is not 1st in tab sequence');
   }
   if (!tabSequence[1]?.className?.includes('prev')) {
-    throw new Error('Finding 2 Failed: Prev button is not 2nd in tab sequence');
+    throw new Error('Finding A Failed: Prev button is not 2nd in tab sequence');
   }
-  if (tabSequence[2]?.role !== 'tab') {
-    throw new Error('Finding 2 Failed: Tablist indicator is not 3rd in tab sequence');
+  if (!tabSequence[2]?.className?.includes('next')) {
+    throw new Error('Finding A Failed: Next button is not 3rd in tab sequence');
   }
-  if (!tabSequence[3]?.className?.includes('next')) {
-    throw new Error('Finding 2 Failed: Next button is not 4th in tab sequence');
+  if (tabSequence[3]?.role !== 'tab') {
+    throw new Error('Finding A Failed: Tablist indicator is not 4th in tab sequence');
   }
   if (tabSequence[4]?.role !== 'tabpanel') {
-    throw new Error('Finding 2 Failed: Slide tabpanel is not 5th in tab sequence');
+    throw new Error('Finding A Failed: Active slide tabpanel is not 5th in tab sequence');
   }
   if (tabSequence[5]?.tag !== 'A' || !tabSequence[5]?.label?.includes('Women')) {
-    throw new Error('Finding 2 Failed: Slide CTA link is not 6th in tab sequence');
+    throw new Error('Finding A Failed: Slide CTA link is not 6th in tab sequence');
   }
-  console.log('✓ Finding 2 Passed: Tab sequence strictly adheres to W3C APG Tabbed Carousel order.');
+  console.log('✓ Finding A Tab Sequence Passed: Sequence strictly adheres to W3C APG Tabbed Carousel order.');
 
-  // 3. Tablist exit and reverse Shift+Tab traversal
-  console.log('\nVerifying Tablist exit & Shift+Tab traversal');
-  // Focus active indicator (step 3)
+  // Test A continued: Tablist Exit & Reverse Shift+Tab traversal
+  console.log('\nVerifying Test A: Tablist Exit & Shift+Tab Traversal');
+  // Focus active indicator (Child 3)
   await cdp.eval('document.querySelector(".carousel-indicator.active").focus()');
+  // Press Tab from active tab: MUST move to active tabpanel, NOT to Next button!
   await cdp.sendKey('Tab', 'Tab', 9);
-  const afterTabRole = await cdp.eval('document.activeElement?.className');
-  if (afterTabRole !== 'carousel-btn next') {
-    throw new Error(`Tab exit failed: Expected next button, got ${afterTabRole}`);
+  const afterTabActive = await cdp.eval(`(() => {
+    const el = document.activeElement;
+    return {
+      className: el?.className,
+      role: el?.getAttribute('role'),
+      tabIndex: el?.getAttribute('tabindex')
+    };
+  })()`);
+  console.log('Element focused after Tab on active tab:', afterTabActive);
+  if (afterTabActive.className?.includes('next')) {
+    throw new Error('Finding A Failed: Tab from active tab moved to Next button instead of active slide!');
   }
+  if (afterTabActive.role !== 'tabpanel') {
+    throw new Error(`Finding A Failed: Expected active tabpanel, got role='${afterTabActive.role}', class='${afterTabActive.className}'`);
+  }
+  console.log('✓ Tab from active tab cleanly moves to active tabpanel.');
+
+  // Press Tab again to reach slide CTA
+  await cdp.sendKey('Tab', 'Tab', 9);
+  const afterTabCTA = await cdp.eval('document.activeElement?.tagName');
+  if (afterTabCTA !== 'A') {
+    throw new Error(`Finding A Failed: Expected CTA link 'A', got ${afterTabCTA}`);
+  }
+
+  // Reverse Shift+Tab traversal:
+  // From CTA -> Shift+Tab -> active tabpanel
   await cdp.sendKey('Tab', 'Tab', 9, 8); // Shift+Tab
-  const reversedRole = await cdp.eval('document.activeElement?.getAttribute("role")');
+  let reversedRole = await cdp.eval('document.activeElement?.getAttribute("role")');
+  if (reversedRole !== 'tabpanel') {
+    throw new Error(`Reverse traversal failed: Expected active tabpanel, got ${reversedRole}`);
+  }
+
+  // From active tabpanel -> Shift+Tab -> active tab
+  await cdp.sendKey('Tab', 'Tab', 9, 8); // Shift+Tab
+  reversedRole = await cdp.eval('document.activeElement?.getAttribute("role")');
   if (reversedRole !== 'tab') {
-    throw new Error(`Reverse traversal failed: Expected tab, got ${reversedRole}`);
-  }
-  console.log('✓ Tablist Exit & Reverse: Verified clean single-stop tab traversal with no keyboard traps.');
-
-  // 4. Arrow navigation with focus and tabpanel tabindex synchronization
-  console.log('\nVerifying Arrow navigation & Panel tabindex synchronization');
-  // Currently on Tab 0
-  await cdp.sendKey('ArrowRight', 'ArrowRight', 39);
-  let activeSlideHeading = await cdp.eval('document.querySelector(".carousel-slide.active h3")?.textContent.trim()');
-  let focusedTabName = await cdp.eval('document.activeElement?.getAttribute("aria-label")');
-  let panelTabIndex = await cdp.eval('document.querySelector(".carousel-slide.active")?.getAttribute("tabindex")');
-  console.log(`ArrowRight 1 -> Slide: "${activeSlideHeading}", Tab: "${focusedTabName}", Panel tabindex: "${panelTabIndex}"`);
-  if (!focusedTabName?.includes('challenge the elements') || panelTabIndex !== '0') {
-    throw new Error('Arrow navigation failed on step 1');
+    throw new Error(`Reverse traversal failed: Expected active tab, got ${reversedRole}`);
   }
 
-  await cdp.sendKey('ArrowRight', 'ArrowRight', 39);
-  activeSlideHeading = await cdp.eval('document.querySelector(".carousel-slide.active h3")?.textContent.trim()');
-  focusedTabName = await cdp.eval('document.activeElement?.getAttribute("aria-label")');
-  panelTabIndex = await cdp.eval('document.querySelector(".carousel-slide.active")?.getAttribute("tabindex")');
-  console.log(`ArrowRight 2 -> Slide: "${activeSlideHeading}", Tab: "${focusedTabName}", Panel tabindex: "${panelTabIndex}"`);
-  if (!focusedTabName?.includes('want the strongest') || panelTabIndex !== '0') {
-    throw new Error('Arrow navigation failed on step 2');
+  // From active tab -> Shift+Tab -> Next button
+  await cdp.sendKey('Tab', 'Tab', 9, 8); // Shift+Tab
+  let reversedClass = await cdp.eval('document.activeElement?.className');
+  if (!reversedClass?.includes('next')) {
+    throw new Error(`Reverse traversal failed: Expected Next button, got ${reversedClass}`);
   }
 
-  // Wrap around
-  await cdp.sendKey('ArrowRight', 'ArrowRight', 39);
-  focusedTabName = await cdp.eval('document.activeElement?.getAttribute("aria-label")');
-  console.log(`ArrowRight 3 (wrap-around) -> Tab: "${focusedTabName}"`);
-  if (!focusedTabName?.includes('never stop')) throw new Error('ArrowRight wrap-around failed');
+  // From Next button -> Shift+Tab -> Prev button
+  await cdp.sendKey('Tab', 'Tab', 9, 8); // Shift+Tab
+  reversedClass = await cdp.eval('document.activeElement?.className');
+  if (!reversedClass?.includes('prev')) {
+    throw new Error(`Reverse traversal failed: Expected Prev button, got ${reversedClass}`);
+  }
 
-  await cdp.sendKey('ArrowLeft', 'ArrowLeft', 37);
-  focusedTabName = await cdp.eval('document.activeElement?.getAttribute("aria-label")');
-  console.log(`ArrowLeft (wrap-around) -> Tab: "${focusedTabName}"`);
-  if (!focusedTabName?.includes('want the strongest')) throw new Error('ArrowLeft wrap-around failed');
-  console.log('✓ Arrow Navigation & Wrap-around: Fully verified with active panel synchronization.');
+  // From Prev button -> Shift+Tab -> Autoplay button
+  await cdp.sendKey('Tab', 'Tab', 9, 8); // Shift+Tab
+  reversedClass = await cdp.eval('document.activeElement?.className');
+  if (!reversedClass?.includes('carousel-autoplay-btn')) {
+    throw new Error(`Reverse traversal failed: Expected Autoplay button, got ${reversedClass}`);
+  }
+  console.log('✓ Test A Passed: Clean forward tablist exit to slide and full reverse Shift+Tab traversal.');
 
-  // 5. Home and End navigation
-  console.log('\nVerifying Home and End navigation');
-  await cdp.sendKey('Home', 'Home', 36);
-  focusedTabName = await cdp.eval('document.activeElement?.getAttribute("aria-label")');
-  console.log(`Home key -> Tab: "${focusedTabName}"`);
-  if (!focusedTabName?.includes('never stop')) throw new Error('Home key failed');
+  // 3. Test B: Stale Pointer Modality Regression
+  console.log('\nVerifying Test B: Stale Pointer Modality Regression');
+  // Load a fresh page with autoplay running
+  await cdp.send('Page.navigate', { url: 'http://127.0.0.1:8996/rendered-migrated-page.html' });
+  await new Promise(r => setTimeout(r, 600));
 
-  await cdp.sendKey('End', 'End', 35);
-  focusedTabName = await cdp.eval('document.activeElement?.getAttribute("aria-label")');
-  console.log(`End key -> Tab: "${focusedTabName}"`);
-  if (!focusedTabName?.includes('want the strongest')) throw new Error('End key failed');
-  console.log('✓ Home & End Navigation: Successfully verified.');
+  let initialAutoplayLabel = await cdp.eval('document.querySelector(".carousel-autoplay-btn")?.getAttribute("aria-label")');
+  console.log('Initial autoplay label on fresh page:', initialAutoplayLabel);
+  if (initialAutoplayLabel !== 'Stop slide rotation') {
+    throw new Error('Test B Failed: Carousel was not rotating initially');
+  }
 
-  // 6. Finding 6: Mouse Click on Stop (Does not trigger accidental start)
-  console.log('\nVerifying Finding 6: Mouse Click on Stop / Start (Interaction Modality)');
-  // Reload page so rotation is active
+  // Move pointer to non-focusable part of the carousel slide (e.g. image area above caption)
+  await cdp.eval('document.querySelector(".carousel").scrollIntoView({ block: "center" });');
+  await new Promise(r => setTimeout(r, 200));
+
+  const nonFocusableBox = await cdp.eval(`(() => {
+    const img = document.querySelector('.carousel-slide.active img');
+    const rect = img.getBoundingClientRect();
+    return { x: Math.round(rect.left + 100), y: Math.round(rect.top + 100) };
+  })()`);
+
+  console.log('Clicking non-focusable slide image with mouse pointer...');
+  await cdp.mouseClick(nonFocusableBox.x, nonFocusableBox.y);
+
+  const activeTagAfterPointer = await cdp.eval('document.activeElement?.tagName');
+  console.log('Active element tag after pointer click on non-focusable element:', activeTagAfterPointer);
+
+  // Move pointer outside carousel
+  await cdp.eval('window.scrollTo(0, document.body.scrollHeight);');
+  await cdp.mouseMove(100, 300);
+  await new Promise(r => setTimeout(r, 100));
+
+  // Position keyboard focus on element immediately preceding the carousel (.hero a)
+  await cdp.eval(`(() => {
+    const heroLink = document.querySelector('.hero a');
+    if (heroLink) heroLink.focus();
+    else { window.scrollTo(0, 0); }
+  })()`);
+
+  // Use real keyboard Tab input to enter the carousel
+  console.log('Navigating into carousel via real keyboard Tab input...');
+  await cdp.sendKey('Tab', 'Tab', 9);
+
+  const focusedElementInCarousel = await cdp.eval(`(() => {
+    const el = document.activeElement;
+    return {
+      tagName: el?.tagName,
+      className: el?.className,
+      label: el?.getAttribute('aria-label') || el?.textContent?.trim()
+    };
+  })()`);
+  console.log('Focused element in carousel after keyboard Tab:', focusedElementInCarousel);
+  if (!focusedElementInCarousel.className?.includes('carousel-autoplay-btn')) {
+    throw new Error(`Test B Failed: Expected focus on autoplay button, got ${focusedElementInCarousel.className}`);
+  }
+
+  // Verify autoplay stops immediately on keyboard focus
+  const labelAfterKeyboardFocus = await cdp.eval('document.querySelector(".carousel-autoplay-btn")?.getAttribute("aria-label")');
+  console.log('Button label after keyboard focus entry:', labelAfterKeyboardFocus);
+  if (labelAfterKeyboardFocus !== 'Start slide rotation') {
+    throw new Error(`Test B Failed: Stale pointer interaction prevented keyboard focus from stopping rotation! (Label: '${labelAfterKeyboardFocus}')`);
+  }
+
+  // Wait beyond one autoplay interval (6 seconds) and confirm slide does not advance
+  console.log('Waiting 6s to confirm rotation stays stopped after keyboard focus entry...');
+  await new Promise(r => setTimeout(r, 6000));
+  const activeSlideAfterWait = await cdp.eval('document.querySelector(".carousel-slide.active h3")?.textContent.trim()');
+  console.log('Active slide after 6s wait:', activeSlideAfterWait);
+  if (!activeSlideAfterWait?.includes('never stop')) {
+    throw new Error('Test B Failed: Slide rotated despite keyboard focus entry stopping rotation!');
+  }
+  console.log('✓ Test B Passed: Stale pointer modality regression completely resolved; keyboard focus stops rotation.');
+
+  // 4. Test C: Mouse Stop and Start
+  console.log('\nVerifying Test C: Mouse Stop and Start');
   await cdp.send('Page.navigate', { url: 'http://127.0.0.1:8996/rendered-migrated-page.html' });
   await new Promise(r => setTimeout(r, 600));
 
@@ -367,59 +451,168 @@ async function run() {
     return { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2) };
   })()`);
 
-  let initialBtnLabel = await cdp.eval('document.querySelector(".carousel-autoplay-btn")?.getAttribute("aria-label")');
-  console.log('Initial button label on load:', initialBtnLabel);
-  if (initialBtnLabel !== 'Stop slide rotation') throw new Error('Initial rotation was not active');
+  initialAutoplayLabel = await cdp.eval('document.querySelector(".carousel-autoplay-btn")?.getAttribute("aria-label")');
+  if (initialAutoplayLabel !== 'Stop slide rotation') throw new Error('Test C Failed: Initial rotation was not active');
 
   // Click Stop with mouse
-  console.log('Clicking Stop button with mouse pointer...');
+  console.log('Activating Stop with real CDP mouse input...');
   await cdp.mouseClick(btnBox.x, btnBox.y);
   let afterStopLabel = await cdp.eval('document.querySelector(".carousel-autoplay-btn")?.getAttribute("aria-label")');
   console.log('Button label after mouse click Stop:', afterStopLabel);
   if (afterStopLabel !== 'Start slide rotation') {
-    throw new Error(`Finding 6 Failed: Clicking Stop resulted in '${afterStopLabel}' instead of 'Start slide rotation'`);
+    throw new Error(`Test C Failed: Clicking Stop resulted in '${afterStopLabel}' instead of 'Start slide rotation'`);
   }
 
-  // Move mouse away to ensure pointer departure does not resume
+  // Move mouse away to confirm departure does not resume
   await cdp.eval('window.scrollTo(0, document.body.scrollHeight);');
   await cdp.mouseMove(100, 300);
-  console.log('Waiting 6s to confirm rotation stays stopped after mouse leave...');
+  console.log('Waiting 6s to confirm rotation remains stopped after mouse departure...');
   await new Promise(r => setTimeout(r, 6000));
-  let slideAfterMouseLeave = await cdp.eval('document.querySelector(".carousel-slide.active h3")?.textContent.trim()');
-  console.log('Active slide after 6s:', slideAfterMouseLeave);
-  if (!slideAfterMouseLeave?.includes('never stop')) {
-    throw new Error('Finding 6 Failed: Mouse leave restarted rotation after explicit Stop!');
+  let slideAfterStop = await cdp.eval('document.querySelector(".carousel-slide.active h3")?.textContent.trim()');
+  console.log('Active slide after 6s:', slideAfterStop);
+  if (!slideAfterStop?.includes('never stop')) {
+    throw new Error('Test C Failed: Mouse departure restarted rotation after explicit Stop!');
   }
-  console.log('✓ Finding 6 (Stop): Mouse click on Stop actually stops rotation and stays stopped.');
 
-  // Click Start with mouse
+  // Activate Start with mouse input
   await cdp.eval('document.querySelector(".carousel-autoplay-btn").scrollIntoView();');
   await new Promise(r => setTimeout(r, 200));
   btnBox = await cdp.eval(`(() => {
     const rect = document.querySelector('.carousel-autoplay-btn').getBoundingClientRect();
     return { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2) };
   })()`);
-  console.log('Clicking Start button with mouse pointer...');
+
+  console.log('Activating Start with real CDP mouse input...');
   await cdp.mouseClick(btnBox.x, btnBox.y);
   let afterStartLabel = await cdp.eval('document.querySelector(".carousel-autoplay-btn")?.getAttribute("aria-label")');
   console.log('Button label after mouse click Start:', afterStartLabel);
   if (afterStartLabel !== 'Stop slide rotation') {
-    throw new Error(`Finding 6 Failed: Clicking Start resulted in '${afterStartLabel}' instead of 'Stop slide rotation'`);
+    throw new Error(`Test C Failed: Clicking Start resulted in '${afterStartLabel}' instead of 'Stop slide rotation'`);
   }
+
   // Move pointer away and verify slide advances at 5000ms
   await cdp.eval('window.scrollTo(0, document.body.scrollHeight);');
   await cdp.mouseMove(100, 300);
-  console.log('Waiting 5.5s to confirm restarted rotation advances slide...');
+  console.log('Waiting 5.5s to confirm restarted rotation advances slide at configured interval...');
   await new Promise(r => setTimeout(r, 5500));
   let advancedSlide = await cdp.eval('document.querySelector(".carousel-slide.active h3")?.textContent.trim()');
   console.log('Active slide after 5.5s:', advancedSlide);
   if (!advancedSlide?.includes('challenge the elements')) {
-    throw new Error('Finding 6 Failed: Explicit restart did not advance slide!');
+    throw new Error('Test C Failed: Explicit restart did not advance slide!');
   }
-  console.log('✓ Finding 6 (Start): Mouse click on Start resumes rotation cleanly.');
+  console.log('✓ Test C Passed: Mouse Stop and Start verified with real CDP mouse input.');
 
-  // 7. Pointer hover pause & resume
+  // 5. Test D: Keyboard Stop and Start (Enter and Space Keys)
+  console.log('\nVerifying Test D: Keyboard Stop and Start (Enter and Space Keys)');
+  await cdp.send('Page.navigate', { url: 'http://127.0.0.1:8996/rendered-migrated-page.html' });
+  await new Promise(r => setTimeout(r, 600));
+
+  await cdp.eval(`(() => {
+    const heroLink = document.querySelector('.hero a');
+    if (heroLink) heroLink.focus();
+    else { window.scrollTo(0, 0); }
+  })()`);
+  await cdp.sendKey('Tab', 'Tab', 9);
+
+  let labelOnFocus = await cdp.eval('document.querySelector(".carousel-autoplay-btn")?.getAttribute("aria-label")');
+  console.log('Autoplay button label upon keyboard Tab focus:', labelOnFocus);
+  if (labelOnFocus !== 'Start slide rotation') {
+    throw new Error(`Test D Failed: Keyboard focus entry did not stop rotation (label: '${labelOnFocus}')`);
+  }
+
+  // Press Enter key to activate Start
+  console.log('Pressing Enter key on focused rotation button to activate Start...');
+  await cdp.sendKey('Enter', 'Enter', 13);
+  let labelAfterEnter = await cdp.eval('document.querySelector(".carousel-autoplay-btn")?.getAttribute("aria-label")');
+  console.log('Button label after Enter key:', labelAfterEnter);
+  if (labelAfterEnter !== 'Stop slide rotation') {
+    throw new Error(`Test D Failed: Enter key did not start rotation (label: '${labelAfterEnter}')`);
+  }
+
+  // Verify rotation actually runs
+  console.log('Waiting 5.5s to confirm Enter-started rotation advances slide...');
+  await new Promise(r => setTimeout(r, 5500));
+  let slideAfterEnter = await cdp.eval('document.querySelector(".carousel-slide.active h3")?.textContent.trim()');
+  console.log('Active slide after Enter restart:', slideAfterEnter);
+  if (!slideAfterEnter?.includes('challenge the elements')) {
+    throw new Error('Test D Failed: Rotation did not advance after Enter key activation!');
+  }
+
+  // Refocus autoplay button and press Space key to activate Stop
+  await cdp.eval('document.querySelector(".carousel-autoplay-btn").focus();');
+  console.log('Pressing Space key on focused rotation button to activate Stop...');
+  await cdp.sendKey(' ', 'Space', 32);
+  let labelAfterSpace = await cdp.eval('document.querySelector(".carousel-autoplay-btn")?.getAttribute("aria-label")');
+  console.log('Button label after Space key:', labelAfterSpace);
+  if (labelAfterSpace !== 'Start slide rotation') {
+    throw new Error(`Test D Failed: Space key did not stop rotation (label: '${labelAfterSpace}')`);
+  }
+
+  // Confirm rotation stays stopped
+  console.log('Waiting 6s to confirm Space-stopped rotation stays stopped...');
+  await new Promise(r => setTimeout(r, 6000));
+  let slideAfterSpace = await cdp.eval('document.querySelector(".carousel-slide.active h3")?.textContent.trim()');
+  console.log('Active slide after Space stop wait:', slideAfterSpace);
+  if (!slideAfterSpace?.includes('challenge the elements')) {
+    throw new Error('Test D Failed: Slide advanced despite Space key stop!');
+  }
+  console.log('✓ Test D Passed: Keyboard Enter (Start) and Space (Stop) verified with real browser keystrokes.');
+
+  // 6. Test E: Existing Behavior (Arrow Navigation, Wrap-Around, Home/End, Hover, Reduced Motion)
+  console.log('\nVerifying Test E: Existing Behavior (Arrow Keys, Wrap-around, Home/End, Hover, Reduced Motion)');
+  // Focus active indicator
+  await cdp.eval('document.querySelector(".carousel-indicator.active").focus()');
+  await cdp.sendKey('ArrowRight', 'ArrowRight', 39);
+  let activeSlideHeading = await cdp.eval('document.querySelector(".carousel-slide.active h3")?.textContent.trim()');
+  let focusedTabName = await cdp.eval('document.activeElement?.getAttribute("aria-label")');
+  let panelTabIndex = await cdp.eval('document.querySelector(".carousel-slide.active")?.getAttribute("tabindex")');
+  console.log(`ArrowRight 1 -> Slide: "${activeSlideHeading}", Tab: "${focusedTabName}", Panel tabindex: "${panelTabIndex}"`);
+  if (!focusedTabName?.includes('want the strongest') || panelTabIndex !== '0') {
+    throw new Error('Arrow navigation failed on step 1');
+  }
+
+  // Wrap around to slide 0
+  await cdp.sendKey('ArrowRight', 'ArrowRight', 39);
+  focusedTabName = await cdp.eval('document.activeElement?.getAttribute("aria-label")');
+  console.log(`ArrowRight 2 (wrap-around) -> Tab: "${focusedTabName}"`);
+  if (!focusedTabName?.includes('never stop')) throw new Error('ArrowRight wrap-around failed');
+
+  // Wrap around left to last slide
+  await cdp.sendKey('ArrowLeft', 'ArrowLeft', 37);
+  focusedTabName = await cdp.eval('document.activeElement?.getAttribute("aria-label")');
+  console.log(`ArrowLeft (wrap-around) -> Tab: "${focusedTabName}"`);
+  if (!focusedTabName?.includes('want the strongest')) throw new Error('ArrowLeft wrap-around failed');
+
+  // Home key
+  await cdp.sendKey('Home', 'Home', 36);
+  focusedTabName = await cdp.eval('document.activeElement?.getAttribute("aria-label")');
+  console.log(`Home key -> Tab: "${focusedTabName}"`);
+  if (!focusedTabName?.includes('never stop')) throw new Error('Home key failed');
+
+  // End key
+  await cdp.sendKey('End', 'End', 35);
+  focusedTabName = await cdp.eval('document.activeElement?.getAttribute("aria-label")');
+  console.log(`End key -> Tab: "${focusedTabName}"`);
+  if (!focusedTabName?.includes('want the strongest')) throw new Error('End key failed');
+  console.log('✓ Arrow, Wrap-around, Home and End navigation fully verified.');
+
+  // Pointer hover pause and resume
   console.log('\nVerifying Pointer hover pause & resume');
+  // First restart rotation via mouse on Start
+  await cdp.eval('document.querySelector(".carousel-autoplay-btn").scrollIntoView();');
+  await new Promise(r => setTimeout(r, 200));
+  btnBox = await cdp.eval(`(() => {
+    const rect = document.querySelector('.carousel-autoplay-btn').getBoundingClientRect();
+    return { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2) };
+  })()`);
+  await cdp.mouseClick(btnBox.x, btnBox.y);
+
+  // Move pointer outside carousel first so subsequent move enters from outside
+  await cdp.eval('window.scrollTo(0, document.body.scrollHeight);');
+  await cdp.mouseMove(100, 300);
+  await new Promise(r => setTimeout(r, 200));
+
+  // Now enter carousel from outside
   await cdp.eval('document.querySelector(".carousel").scrollIntoView({ block: "center" });');
   await new Promise(r => setTimeout(r, 200));
   const carouselBox = await cdp.eval(`(() => {
@@ -427,12 +620,14 @@ async function run() {
     return { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2) };
   })()`);
   await cdp.mouseMove(carouselBox.x, carouselBox.y);
-  console.log('Pointer hovering over carousel. Waiting 6s to confirm slide remains paused...');
+  console.log('Pointer hovering over carousel. Waiting 6s to confirm slide remains paused during hover...');
   await new Promise(r => setTimeout(r, 6000));
   let hoveredSlide = await cdp.eval('document.querySelector(".carousel-slide.active h3")?.textContent.trim()');
-  if (!hoveredSlide?.includes('challenge the elements')) {
+  console.log('Active slide during hover pause:', hoveredSlide);
+  if (!hoveredSlide?.includes('want the strongest')) {
     throw new Error('Hover pause failed: Slide rotated during hover!');
   }
+
   // Move pointer outside
   await cdp.eval('window.scrollTo(0, document.body.scrollHeight);');
   await cdp.mouseMove(100, 300);
@@ -440,12 +635,12 @@ async function run() {
   await new Promise(r => setTimeout(r, 5500));
   let resumedSlide = await cdp.eval('document.querySelector(".carousel-slide.active h3")?.textContent.trim()');
   console.log('Active slide after resume:', resumedSlide);
-  if (!resumedSlide?.includes('want the strongest')) {
+  if (!resumedSlide?.includes('never stop')) {
     throw new Error('Resume failed after pointer departure');
   }
   console.log('✓ Pointer Hover: Pauses on enter, resumes on leave.');
 
-  // 8. Reduced Motion preference
+  // Reduced motion preference
   console.log('\nVerifying prefers-reduced-motion preference');
   await cdp.send('Emulation.setEmulatedMedia', {
     features: [{ name: 'prefers-reduced-motion', value: 'reduce' }]
