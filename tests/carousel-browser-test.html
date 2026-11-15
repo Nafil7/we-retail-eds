@@ -105,32 +105,43 @@
   </div>
 
   <script type="module">
-    // Deterministic Virtual Clock implementation
+    // Deterministic Virtual Clock with Separated Active & Historical Collections
     class VirtualClock {
       constructor() {
         this.now = 0;
         this.nextTimerId = 1;
-        this.timers = new Map();
+        this.activeTimers = new Map();
+        this.history = new Map();
       }
 
       setInterval(fn, ms) {
         const id = this.nextTimerId++;
         const duration = Number(ms) || 0;
-        this.timers.set(id, {
+        const record = {
           id,
-          fn,
+          rawFn: fn,
           ms: duration,
+          createdAt: this.now,
           nextRun: this.now + duration,
-          cancelled: false
-        });
+          cancelled: false,
+          cancelledAt: null,
+          executionCount: 0,
+          fn: () => {
+            record.executionCount++;
+            fn();
+          }
+        };
+        this.activeTimers.set(id, record);
+        this.history.set(id, record);
         return id;
       }
 
       clearInterval(id) {
-        const timer = this.timers.get(id);
+        const timer = this.history.get(id);
         if (timer) {
           timer.cancelled = true;
-          this.timers.delete(id);
+          timer.cancelledAt = this.now;
+          this.activeTimers.delete(id);
         }
       }
 
@@ -141,7 +152,7 @@
 
         while (true) {
           let earliest = null;
-          for (const timer of this.timers.values()) {
+          for (const timer of this.activeTimers.values()) {
             if (!timer.cancelled && timer.nextRun <= targetTime) {
               if (!earliest || timer.nextRun < earliest.nextRun || (timer.nextRun === earliest.nextRun && timer.id < earliest.id)) {
                 earliest = timer;
@@ -165,15 +176,23 @@
       }
 
       getActiveTimers() {
-        return Array.from(this.timers.values()).filter(t => !t.cancelled);
+        return Array.from(this.activeTimers.values()).filter(t => !t.cancelled);
       }
 
       get activeTimerCount() {
         return this.getActiveTimers().length;
       }
 
+      getHistoricalTimers() {
+        return Array.from(this.history.values());
+      }
+
+      getCancelledTimers() {
+        return Array.from(this.history.values()).filter(t => t.cancelled);
+      }
+
       getTimer(id) {
-        return this.timers.get(id) || null;
+        return this.history.get(id) || null;
       }
     }
 
@@ -220,7 +239,7 @@
     const nextBtn = block.querySelector('.carousel-btn.next');
     const outsideTarget = document.getElementById('external-focus-target');
 
-    // Section 1: Initial slide state and timer initialization
+    // Section 1: Initial slide state
     assert('1. Exactly 3 slides created', slides.length === 3);
     assert('2. Slide 0 active initially', slides[0].classList.contains('active'));
     assert('3. Slide 0 aria-hidden is false', slides[0].getAttribute('aria-hidden') === 'false');
@@ -235,154 +254,181 @@
     const initialTimers = clock.getActiveTimers();
     assert('10. Autoplay timer initialized', initialTimers.length === 1);
     assert('11. Exactly one autoplay timer active (no duplicates)', clock.activeTimerCount === 1);
-    const autoplayTimer = initialTimers[0];
-    assert('12. Autoplay timer configured with exactly 5000ms interval', autoplayTimer && autoplayTimer.ms === 5000, `Configured interval: ${autoplayTimer?.ms}ms`);
-    assert('13. Next execution scheduled at virtual T=5000ms', autoplayTimer && autoplayTimer.nextRun === 5000);
+    const initialTimer = initialTimers[0];
+    assert('12. Autoplay timer configured with exactly 5000ms interval', initialTimer && initialTimer.ms === 5000, `Configured interval: ${initialTimer?.ms}ms`);
+    assert('13. Next execution scheduled at virtual T=5000ms', initialTimer && initialTimer.nextRun === 5000);
+    assert('14. Historical record tracks initial timer', clock.getTimer(initialTimer.id) === initialTimer);
+    assert('15. Initial timer execution count starts at 0', initialTimer && initialTimer.executionCount === 0);
 
-    // Section 3: Manual navigation (Indicators, Next, Prev)
-    indicators[1].click();
-    assert('14. Slide 1 active after indicator click', slides[1].classList.contains('active'));
-    assert('15. Slide 0 hidden after indicator click', slides[0].getAttribute('aria-hidden') === 'true');
-    assert('16. Indicator 1 selected after click', indicators[1].getAttribute('aria-selected') === 'true');
-
-    indicators[2].click();
-    assert('17. Slide 2 active after indicator click', slides[2].classList.contains('active'));
-    assert('18. Indicator 2 selected after click', indicators[2].getAttribute('aria-selected') === 'true');
-
-    nextBtn.click(); // 2 -> 0 wrap-around
-    assert('19. Next button wraps to Slide 0', slides[0].classList.contains('active'));
-    assert('20. Indicator 0 selected after wrap-around', indicators[0].getAttribute('aria-selected') === 'true');
-
-    prevBtn.click(); // 0 -> 2 wrap-around
-    assert('21. Prev button wraps to Slide 2', slides[2].classList.contains('active'));
-    assert('22. Indicator 2 selected after wrap-around', indicators[2].getAttribute('aria-selected') === 'true');
-
-    prevBtn.click(); // 2 -> 1
-    assert('23. Prev button moves to Slide 1', slides[1].classList.contains('active'));
-
-    // Section 4: Keyboard navigation & focus management on indicators
-    indicators[1].focus();
-    assert('24. Keyboard focus reaches indicator 1', document.activeElement === indicators[1]);
-
-    // ArrowRight advances to Slide 2 and shifts focus
-    indicators[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
-    assert('25. ArrowRight advances to Slide 2', slides[2].classList.contains('active'));
-    assert('26. Slide 2 aria-hidden is false', slides[2].getAttribute('aria-hidden') === 'false');
-    assert('27. Slide 1 aria-hidden is true', slides[1].getAttribute('aria-hidden') === 'true');
-    assert('28. Indicator 2 selected (aria-selected=true)', indicators[2].getAttribute('aria-selected') === 'true');
-    assert('29. Indicator 1 unselected (aria-selected=false)', indicators[1].getAttribute('aria-selected') === 'false');
-    assert('30. Indicator 2 receives keyboard focus', document.activeElement === indicators[2]);
-
-    // ArrowLeft returns to Slide 1 and shifts focus
-    indicators[2].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true }));
-    assert('31. ArrowLeft returns to Slide 1', slides[1].classList.contains('active'));
-    assert('32. Slide 1 aria-hidden is false', slides[1].getAttribute('aria-hidden') === 'false');
-    assert('33. Indicator 1 selected (aria-selected=true)', indicators[1].getAttribute('aria-selected') === 'true');
-    assert('34. Indicator 1 receives keyboard focus', document.activeElement === indicators[1]);
-
-    // ArrowRight wraps from 2 to 0
-    indicators[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })); // -> 2
-    indicators[2].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })); // -> 0
-    assert('35. ArrowRight wraps from Slide 2 to Slide 0', slides[0].classList.contains('active'));
-    assert('36. Indicator 0 receives keyboard focus', document.activeElement === indicators[0]);
-
-    // Section 5: Strict Virtual Clock Timing Verifications (Requirements 2, 3, 4, 5)
-    // Blur to outside element so neither pointer nor keyboard focus is inside
-    outsideTarget.focus();
-    assert('37. Autoplay timer active when neither hovered nor focused', clock.activeTimerCount === 1);
-
-    // Current slide is 0. Record baseline clock time
+    // Section 3: Strict Timing Verifications on Initial Timer (4999ms no move, 1ms move)
     const baseTime = clock.now;
-    assert('38. Starting timing test at Slide 0', slides[0].classList.contains('active'));
+    assert('16. Starting timing test at Slide 0', slides[0].classList.contains('active'));
 
     // Requirement 2: Advancing 4999ms must NOT change the active slide
     clock.advance(4999);
-    assert('39. Advancing 4999ms does not change active slide', slides[0].classList.contains('active'), `Elapsed: ${clock.now - baseTime}ms`);
+    assert('17. Advancing 4999ms does not change active slide', slides[0].classList.contains('active'), `Elapsed: ${clock.now - baseTime}ms`);
+    assert('18. Initial timer execution count remains 0 at 4999ms', initialTimer.executionCount === 0);
 
     // Requirement 3: Advancing another 1ms (total 5000ms) advances exactly one slide
     clock.advance(1);
-    assert('40. Advancing another 1ms (total 5000ms) advances to Slide 1', slides[1].classList.contains('active'), `Elapsed: ${clock.now - baseTime}ms`);
+    assert('19. Advancing another 1ms (total 5000ms) advances to Slide 1', slides[1].classList.contains('active'), `Elapsed: ${clock.now - baseTime}ms`);
+    assert('20. Initial timer execution count increments to 1 at 5000ms', initialTimer.executionCount === 1);
 
     // Requirement 4: Advancing another 4999ms does not advance again
     clock.advance(4999);
-    assert('41. Advancing another 4999ms does not advance again', slides[1].classList.contains('active'), `Elapsed: ${clock.now - baseTime}ms`);
+    assert('21. Advancing another 4999ms does not advance again', slides[1].classList.contains('active'), `Elapsed: ${clock.now - baseTime}ms`);
+    assert('22. Initial timer execution count remains 1 at 9999ms', initialTimer.executionCount === 1);
 
     // Requirement 5: Advancing another 1ms (total 10000ms) advances the next slide
     clock.advance(1);
-    assert('42. Advancing another 1ms (total 10000ms) advances to Slide 2', slides[2].classList.contains('active'), `Elapsed: ${clock.now - baseTime}ms`);
+    assert('23. Advancing another 1ms (total 10000ms) advances to Slide 2', slides[2].classList.contains('active'), `Elapsed: ${clock.now - baseTime}ms`);
+    assert('24. Initial timer execution count increments to 2 at 10000ms', initialTimer.executionCount === 2);
 
-    // Section 6: Pause on pointer hover & Requirement 6: Pausing prevents movement regardless of time
+    // Section 4: Meaningful Cancelled Timer Verification on Hover (Stage 7.2 Requirements)
+    const countBeforeHover = initialTimer.executionCount; // exactly 2
+    assert('25. Recorded execution count before hover is 2', countBeforeHover === 2);
+
+    // Pointer hover begins: triggers pauseAutoplay() -> clearInterval(initialTimer.id)
     block.dispatchEvent(new MouseEvent('mouseenter'));
-    assert('43. Autoplay timer paused on pointer hover (mouseenter)', clock.activeTimerCount === 0);
+    assert('26. Autoplay timer cancelled on pointer hover (mouseenter)', initialTimer.cancelled === true);
+    assert('27. Initial timer removed from active collection', clock.activeTimerCount === 0 && !clock.getActiveTimers().includes(initialTimer));
+    assert('28. Historical record for cancelled timer remains available', clock.getTimer(initialTimer.id) === initialTimer);
+    assert('29. Cancelled timer record present in getCancelledTimers()', clock.getCancelledTimers().includes(initialTimer));
 
-    // Requirement 6: Advance 15000ms virtual time while paused — slide must not advance
-    clock.advance(15000);
-    assert('44. Pausing autoplay prevents slide movement regardless of elapsed virtual time (advanced 15000ms)', slides[2].classList.contains('active'));
+    // Advance 20,000ms virtual time while timer 1 is cancelled
+    clock.advance(20000);
+    assert('30. Advancing 20,000ms does not execute cancelled timer 1 callback', initialTimer.executionCount === countBeforeHover);
+    assert('31. Cancelled timer 1 execution count remains unchanged (2)', initialTimer.executionCount === 2);
+    assert('32. Timer 1 remains absent from active collection across 20,000ms', clock.activeTimerCount === 0);
+    assert('33. Slide remains static while timer 1 is cancelled', slides[2].classList.contains('active'));
 
-    // Section 7: Resuming after hover & Requirement 7: Resuming schedules next interval correctly
+    // Section 5: Resuming after hover & Resumed Timer Lifecycle
     block.dispatchEvent(new MouseEvent('mouseleave'));
-    assert('45. Autoplay timer resumes after mouseleave', clock.activeTimerCount === 1);
+    assert('34. Autoplay timer resumes after mouseleave', clock.activeTimerCount === 1);
     const resumeTimer = clock.getActiveTimers()[0];
-    assert('46. Resumed timer scheduled with 5000ms duration', resumeTimer && resumeTimer.ms === 5000);
+    assert('35. Resumed timer is a distinct newly created timer instance', resumeTimer.id !== initialTimer.id);
+    assert('36. Resumed timer configured with 5000ms duration', resumeTimer && resumeTimer.ms === 5000);
+    assert('37. Resumed timer execution count starts at 0', resumeTimer.executionCount === 0);
     const resumeBase = clock.now;
 
     // Verify resumed interval respects 5000ms: 4999ms no move, 1ms move
     clock.advance(4999);
-    assert('47. Resumed timer: advancing 4999ms does not change slide', slides[2].classList.contains('active'), `Elapsed: ${clock.now - resumeBase}ms`);
+    assert('38. Resumed timer: advancing 4999ms does not change slide', slides[2].classList.contains('active'), `Elapsed: ${clock.now - resumeBase}ms`);
+    assert('39. Resumed timer execution count remains 0 at 4999ms', resumeTimer.executionCount === 0);
     clock.advance(1);
-    assert('48. Resumed timer: advancing 1ms (total 5000ms) advances to Slide 0', slides[0].classList.contains('active'), `Elapsed: ${clock.now - resumeBase}ms`);
+    assert('40. Resumed timer: advancing 1ms (total 5000ms) advances to Slide 0', slides[0].classList.contains('active'), `Elapsed: ${clock.now - resumeBase}ms`);
+    assert('41. Resumed timer execution count increments to 1 at 5000ms', resumeTimer.executionCount === 1);
 
-    // Section 8: Keyboard focus pause and internal focus movement
+    // Section 6: Meaningful Cancellation of Resumed Timer on Focus
+    const countBeforeFocus = resumeTimer.executionCount; // 1
+    assert('42. Recorded resumed timer execution count before focus is 1', countBeforeFocus === 1);
     prevBtn.focus();
-    assert('49. Autoplay timer paused on keyboard focus (focusin)', clock.activeTimerCount === 0);
-    clock.advance(15000);
-    assert('50. Slide does not advance while focused across 15000ms', slides[0].classList.contains('active'));
+    assert('43. Autoplay timer cancelled on keyboard focus (focusin)', resumeTimer.cancelled === true);
+    assert('44. Resumed timer removed from active collection', clock.activeTimerCount === 0);
+    assert('45. Historical record for cancelled resumeTimer remains available', clock.getTimer(resumeTimer.id) === resumeTimer);
 
-    // Focus movement between internal controls (prevBtn -> nextBtn -> indicator 0)
+    // Advance 20,000ms virtual time while resumed timer is cancelled
+    clock.advance(20000);
+    assert('46. Advancing 20,000ms does not execute cancelled resumeTimer callback', resumeTimer.executionCount === countBeforeFocus);
+    assert('47. Resumed timer execution count remains unchanged (1)', resumeTimer.executionCount === 1);
+    assert('48. Slide does not advance while focused across 20,000ms', slides[0].classList.contains('active'));
+
+    // Section 7: Manual navigation (Indicators, Next, Prev) while focused
+    indicators[1].click();
+    assert('49. Slide 1 active after indicator click', slides[1].classList.contains('active'));
+    assert('50. Slide 0 hidden after indicator click', slides[0].getAttribute('aria-hidden') === 'true');
+    assert('51. Indicator 1 selected after click', indicators[1].getAttribute('aria-selected') === 'true');
+
+    indicators[2].click();
+    assert('52. Slide 2 active after indicator click', slides[2].classList.contains('active'));
+    assert('53. Indicator 2 selected after click', indicators[2].getAttribute('aria-selected') === 'true');
+
+    nextBtn.click(); // 2 -> 0 wrap-around
+    assert('54. Next button wraps to Slide 0', slides[0].classList.contains('active'));
+    assert('55. Indicator 0 selected after wrap-around', indicators[0].getAttribute('aria-selected') === 'true');
+
+    prevBtn.click(); // 0 -> 2 wrap-around
+    assert('56. Prev button wraps to Slide 2', slides[2].classList.contains('active'));
+    assert('57. Indicator 2 selected after wrap-around', indicators[2].getAttribute('aria-selected') === 'true');
+
+    prevBtn.click(); // 2 -> 1
+    assert('58. Prev button moves to Slide 1', slides[1].classList.contains('active'));
+
+    // Section 8: Keyboard navigation & focus management on indicators
+    indicators[1].focus();
+    assert('59. Keyboard focus reaches indicator 1', document.activeElement === indicators[1]);
+
+    // ArrowRight advances to Slide 2 and shifts focus
+    indicators[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
+    assert('60. ArrowRight advances to Slide 2', slides[2].classList.contains('active'));
+    assert('61. Slide 2 aria-hidden is false', slides[2].getAttribute('aria-hidden') === 'false');
+    assert('62. Slide 1 aria-hidden is true', slides[1].getAttribute('aria-hidden') === 'true');
+    assert('63. Indicator 2 selected (aria-selected=true)', indicators[2].getAttribute('aria-selected') === 'true');
+    assert('64. Indicator 1 unselected (aria-selected=false)', indicators[1].getAttribute('aria-selected') === 'false');
+    assert('65. Indicator 2 receives keyboard focus', document.activeElement === indicators[2]);
+
+    // ArrowLeft returns to Slide 1 and shifts focus
+    indicators[2].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true }));
+    assert('66. ArrowLeft returns to Slide 1', slides[1].classList.contains('active'));
+    assert('67. Slide 1 aria-hidden is false', slides[1].getAttribute('aria-hidden') === 'false');
+    assert('68. Indicator 1 selected (aria-selected=true)', indicators[1].getAttribute('aria-selected') === 'true');
+    assert('69. Indicator 1 receives keyboard focus', document.activeElement === indicators[1]);
+
+    // ArrowRight wraps from 2 to 0
+    indicators[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })); // -> 2
+    indicators[2].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })); // -> 0
+    assert('70. ArrowRight wraps from Slide 2 to Slide 0', slides[0].classList.contains('active'));
+    assert('71. Indicator 0 receives keyboard focus', document.activeElement === indicators[0]);
+
+    // Section 9: Focus movement between internal controls & pointer hover combinations
     nextBtn.focus();
-    assert('51. Focus shift from prevBtn to nextBtn does not resume autoplay', clock.activeTimerCount === 0);
+    assert('72. Focus shift from prevBtn to nextBtn does not resume autoplay', clock.activeTimerCount === 0);
     indicators[0].focus();
-    assert('52. Focus shift from nextBtn to indicator 0 does not resume autoplay', clock.activeTimerCount === 0);
+    assert('73. Focus shift from nextBtn to indicator 0 does not resume autoplay', clock.activeTimerCount === 0);
     clock.advance(15000);
-    assert('53. Slide remains static during internal focus shifts across 15000ms', slides[0].classList.contains('active'));
+    assert('74. Slide remains static during internal focus shifts across 15,000ms', slides[0].classList.contains('active'));
 
     // Pointer leaving while focus remains inside
     block.dispatchEvent(new MouseEvent('mouseenter'));
     block.dispatchEvent(new MouseEvent('mouseleave'));
-    assert('54. Pointer leaving while focus remains inside does not resume autoplay', clock.activeTimerCount === 0);
+    assert('75. Pointer leaving while focus remains inside does not resume autoplay', clock.activeTimerCount === 0);
     clock.advance(15000);
-    assert('55. Slide remains static when pointer leaves while focused', slides[0].classList.contains('active'));
+    assert('76. Slide remains static when pointer leaves while focused', slides[0].classList.contains('active'));
 
     // Focus leaving while pointer remains inside
     block.dispatchEvent(new MouseEvent('mouseenter'));
     outsideTarget.focus(); // focus leaves to outside, but pointer is hovering
-    assert('56. Focus leaving while pointer remains inside does not resume autoplay', clock.activeTimerCount === 0);
+    assert('77. Focus leaving while pointer remains inside does not resume autoplay', clock.activeTimerCount === 0);
     clock.advance(15000);
-    assert('57. Slide remains static when focus leaves while pointer hovered', slides[0].classList.contains('active'));
+    assert('78. Slide remains static when focus leaves while pointer hovered', slides[0].classList.contains('active'));
 
-    // Section 9: Requirement 8: Cancelled timers never execute
-    // While paused, verify cancelled timer references never trigger
-    const deadTimers = Array.from(clock.timers.values()).filter(t => t.cancelled);
-    let deadTimerFired = false;
-    deadTimers.forEach(t => {
-      const origFn = t.fn;
-      t.fn = () => { deadTimerFired = true; origFn(); };
-    });
+    // Section 10: Comprehensive Multi-Timer Historical Audit
+    const allCancelled = clock.getCancelledTimers();
+    assert('79. All cancelled timers collection contains multiple historical records (non-empty)', allCancelled.length >= 2, `Cancelled count: ${allCancelled.length}`);
+    const countsBeforeLeap = allCancelled.map(t => t.executionCount);
     clock.advance(20000);
-    assert('58. Cancelled timers never execute across 20000ms', !deadTimerFired);
+    const zeroIncreases = allCancelled.every((t, i) => t.executionCount === countsBeforeLeap[i]);
+    assert('80. All historical cancelled timers executed zero times across 20,000ms advance', zeroIncreases);
 
-    // Section 10: Autoplay resumes after both pointer and focus leave
+    // Section 11: Autoplay resumes after both pointer and focus leave
     block.dispatchEvent(new MouseEvent('mouseleave'));
-    assert('59. Autoplay timer resumes when both pointer and focus leave', clock.activeTimerCount === 1);
-    assert('60. Exactly one active timer running (no duplicate timer creation)', clock.activeTimerCount === 1);
+    assert('81. Autoplay timer resumes when both pointer and focus leave', clock.activeTimerCount === 1);
+    assert('82. Exactly one active timer running (no duplicate timer creation)', clock.activeTimerCount === 1);
+
+    const thirdTimer = clock.getActiveTimers()[0];
+    assert('83. Third active timer has distinct unique ID', thirdTimer.id !== initialTimer.id && thirdTimer.id !== resumeTimer.id);
+    assert('84. Third timer execution count starts at 0', thirdTimer.executionCount === 0);
 
     const finalBase = clock.now;
     clock.advance(4999);
-    assert('61. Resumed cycle: advancing 4999ms does not advance', slides[0].classList.contains('active'), `Elapsed: ${clock.now - finalBase}ms`);
+    assert('85. Resumed cycle: advancing 4999ms does not advance', slides[0].classList.contains('active'), `Elapsed: ${clock.now - finalBase}ms`);
+    assert('86. Third timer execution count remains 0 at 4999ms', thirdTimer.executionCount === 0);
     clock.advance(1);
-    assert('62. Resumed cycle: advancing 1ms (total 5000ms) advances to Slide 1', slides[1].classList.contains('active'), `Elapsed: ${clock.now - finalBase}ms`);
+    assert('87. Resumed cycle: advancing 1ms (total 5000ms) advances to Slide 1', slides[1].classList.contains('active'), `Elapsed: ${clock.now - finalBase}ms`);
+    assert('88. Third timer execution count increments to 1 at 5000ms', thirdTimer.executionCount === 1);
     clock.advance(5000);
-    assert('63. Resumed cycle: advancing another 5000ms advances to Slide 2', slides[2].classList.contains('active'), `Elapsed: ${clock.now - finalBase}ms`);
+    assert('89. Resumed cycle: advancing another 5000ms advances to Slide 2', slides[2].classList.contains('active'), `Elapsed: ${clock.now - finalBase}ms`);
+    assert('90. Third timer execution count increments to 2 at 10000ms', thirdTimer.executionCount === 2);
 
     // Final summary
     const failures = log.filter(item => !item.pass);
