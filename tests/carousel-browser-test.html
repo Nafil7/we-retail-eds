@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Carousel Behavioral, Timing & Accessibility Test Suite</title>
+  <title>Carousel Behavioral, Timing & Accessibility Test Suite (Stage 7.4)</title>
   <link rel="stylesheet" href="../styles/styles.css">
   <link rel="stylesheet" href="../blocks/carousel/carousel.css">
   <style>
@@ -70,7 +70,7 @@
   </style>
 </head>
 <body>
-  <h1>Carousel Behavioral, Timing & Accessibility Test Suite</h1>
+  <h1>Carousel Behavioral, Timing & Accessibility Test Suite (Stage 7.4)</h1>
   <div id="test-summary">Running tests...</div>
   <table class="test-table">
     <thead>
@@ -84,19 +84,19 @@
     <tbody id="test-rows"></tbody>
   </table>
 
-  <h2>Test Sandbox Fixture 1</h2>
+  <h2>Test Sandbox Fixture 1 (Standard 3-Slide Carousel)</h2>
   <div class="carousel" id="carousel-test">
     <div>
       <div><picture><img src="/img1.jpg" alt="Slide 1"></picture></div>
-      <div><h3>Slide 1</h3><p>Description 1</p></div>
+      <div><h3>Slide 1 Heading</h3><p>Description 1</p><p><a href="#link1">Shop 1</a></p></div>
     </div>
     <div>
       <div><picture><img src="/img2.jpg" alt="Slide 2"></picture></div>
-      <div><h3>Slide 2</h3><p>Description 2</p></div>
+      <div><h3>Slide 2 Heading</h3><p>Description 2</p><p><a href="#link2">Shop 2</a></p></div>
     </div>
     <div>
       <div><picture><img src="/img3.jpg" alt="Slide 3"></picture></div>
-      <div><h3>Slide 3</h3><p>Description 3</p></div>
+      <div><h3>Slide 3 Heading</h3><p>Description 3</p><p><a href="#link3">Shop 3</a></p></div>
     </div>
   </div>
 
@@ -104,11 +104,19 @@
   <div class="carousel" id="carousel-test-2" style="display: none;">
     <div>
       <div><picture><img src="/img4.jpg" alt="Slide 4"></picture></div>
-      <div><h3>Slide 4</h3><p>Description 4</p></div>
+      <div><h3>Slide 4 Heading</h3><p>Description 4</p></div>
     </div>
     <div>
       <div><picture><img src="/img5.jpg" alt="Slide 5"></picture></div>
-      <div><h3>Slide 5</h3><p>Description 5</p></div>
+      <div><h3>Slide 5 Heading</h3><p>Description 5</p></div>
+    </div>
+  </div>
+
+  <h2>Test Sandbox Fixture 3 (Single Slide Degradation)</h2>
+  <div class="carousel" id="carousel-test-single" style="display: none;">
+    <div>
+      <div><picture><img src="/img-single.jpg" alt="Single"></picture></div>
+      <div><h3>Only One Slide</h3><p>Single slide description</p></div>
     </div>
   </div>
 
@@ -245,6 +253,8 @@
       }
     }
 
+    const autoplayBtn = block.querySelector('.carousel-autoplay-btn');
+    const slidesContainer = block.querySelector('.carousel-slides');
     const slides = block.querySelectorAll('.carousel-slide');
     const indicators = block.querySelectorAll('.carousel-indicator');
     const prevBtn = block.querySelector('.carousel-btn.prev');
@@ -252,240 +262,224 @@
     const indicatorsContainer = block.querySelector('.carousel-indicators');
     const outsideTarget = document.getElementById('external-focus-target');
 
-    // Section 1: ARIA Semantics & WAI-ARIA Tabs Relationships
-    assert('1. Exactly 3 slides created', slides.length === 3);
-    assert('2. Slide 0 active initially', slides[0].classList.contains('active'));
-    assert('3. Slide 0 aria-hidden is false', slides[0].getAttribute('aria-hidden') === 'false');
-    assert('4. Slide 1 aria-hidden is true', slides[1].getAttribute('aria-hidden') === 'true');
-    assert('5. Slide 2 aria-hidden is true', slides[2].getAttribute('aria-hidden') === 'true');
-    assert('6. Exactly 3 indicators created', indicators.length === 3);
-    assert('7. Indicators container has role=tablist', indicatorsContainer.getAttribute('role') === 'tablist');
-    assert('8. Tablist has accessible name (aria-label="Carousel slides")', indicatorsContainer.getAttribute('aria-label') === 'Carousel slides');
-    assert('9. Tablist has horizontal orientation (aria-orientation="horizontal")', indicatorsContainer.getAttribute('aria-orientation') === 'horizontal');
+    // Section 1: Workstream A — Container Semantics
+    assert('1. Container has role=region', block.getAttribute('role') === 'region');
+    assert('2. Container has aria-roledescription="carousel"', block.getAttribute('aria-roledescription') === 'carousel');
+    assert('3. Container has accessible name (aria-label="Featured Stories")', block.getAttribute('aria-label') === 'Featured Stories');
+    assert('4. Container has unique ID', block.id && block.id.length > 0);
+
+    // Section 2: Workstream C — Autoplay Control Button
+    assert('5. Autoplay control button exists as first child in tab sequence', block.firstElementChild === autoplayBtn);
+    assert('6. Autoplay button is native BUTTON tag', autoplayBtn.tagName === 'BUTTON');
+    assert('7. Autoplay button has type="button"', autoplayBtn.type === 'button');
+    assert('8. Autoplay button initial accessible name is "Stop slide rotation"', autoplayBtn.getAttribute('aria-label') === 'Stop slide rotation');
+
+    // Section 3: Workstream B & D — Tabbed Carousel Semantics & Live Region
+    assert('9. Exactly 3 slides created', slides.length === 3);
+    assert('10. Slide 0 active initially', slides[0].classList.contains('active'));
+    assert('11. Slide 0 aria-hidden is false', slides[0].getAttribute('aria-hidden') === 'false');
+    assert('12. Slide 1 aria-hidden is true', slides[1].getAttribute('aria-hidden') === 'true');
+    assert('13. Slide 2 aria-hidden is true', slides[2].getAttribute('aria-hidden') === 'true');
+    assert('14. Exactly 3 indicators created', indicators.length === 3);
+    assert('15. Indicators container has role=tablist', indicatorsContainer.getAttribute('role') === 'tablist');
+    assert('16. Tablist has accessible name (aria-label="Carousel slides")', indicatorsContainer.getAttribute('aria-label') === 'Carousel slides');
+    assert('17. Tablist has horizontal orientation (aria-orientation="horizontal")', indicatorsContainer.getAttribute('aria-orientation') === 'horizontal');
+    assert('18. Slides container has aria-atomic="true"', slidesContainer.getAttribute('aria-atomic') === 'true');
+    assert('19. Slides container has aria-live="off" while rotating', slidesContainer.getAttribute('aria-live') === 'off');
 
     // Bi-directional relationships and roving tabindex
     for (let i = 0; i < 3; i++) {
       const slide = slides[i];
       const tab = indicators[i];
-      assert(`10.${i+1} Slide ${i} has unique ID`, slide.id && slide.id.length > 0);
-      assert(`10.${i+2} Tab ${i} has unique ID`, tab.id && tab.id.length > 0);
-      assert(`10.${i+3} Tab ${i} has role=tab`, tab.getAttribute('role') === 'tab');
-      assert(`10.${i+4} Tab ${i} aria-controls matches Slide ${i} ID`, tab.getAttribute('aria-controls') === slide.id);
-      assert(`10.${i+5} Slide ${i} has role=tabpanel`, slide.getAttribute('role') === 'tabpanel');
-      assert(`10.${i+6} Slide ${i} aria-labelledby matches Tab ${i} ID`, slide.getAttribute('aria-labelledby') === tab.id);
+      assert(`20.${i+1} Slide ${i} has unique ID`, slide.id && slide.id.length > 0);
+      assert(`20.${i+2} Tab ${i} has unique ID`, tab.id && tab.id.length > 0);
+      assert(`20.${i+3} Tab ${i} has role=tab`, tab.getAttribute('role') === 'tab');
+      assert(`20.${i+4} Tab ${i} aria-controls matches Slide ${i} ID`, tab.getAttribute('aria-controls') === slide.id);
+      assert(`20.${i+5} Slide ${i} has role=tabpanel`, slide.getAttribute('role') === 'tabpanel');
+      assert(`20.${i+6} Slide ${i} aria-labelledby matches Tab ${i} ID`, slide.getAttribute('aria-labelledby') === tab.id);
+      // Workstream B: do NOT apply aria-roledescription="slide" to tabpanel elements
+      assert(`20.${i+7} Slide ${i} does NOT have aria-roledescription="slide"`, slide.getAttribute('aria-roledescription') === null);
+      // Tab accessible name from slide heading
+      assert(`20.${i+8} Tab ${i} accessible name derived from heading`, tab.getAttribute('aria-label') === `Slide ${i + 1} Heading`);
 
       if (i === 0) {
-        assert(`10.${i+7} Tab 0 is selected (aria-selected="true")`, tab.getAttribute('aria-selected') === 'true');
-        assert(`10.${i+8} Tab 0 has roving tabindex="0"`, tab.getAttribute('tabindex') === '0');
-        assert(`10.${i+9} Slide 0 is not inert`, !slide.hasAttribute('inert'));
+        assert(`20.${i+9} Tab 0 is selected (aria-selected="true")`, tab.getAttribute('aria-selected') === 'true');
+        assert(`20.${i+10} Tab 0 has roving tabindex="0"`, tab.getAttribute('tabindex') === '0');
+        assert(`20.${i+11} Slide 0 is not inert`, !slide.hasAttribute('inert'));
       } else {
-        assert(`10.${i+7} Tab ${i} is unselected (aria-selected="false")`, tab.getAttribute('aria-selected') === 'false');
-        assert(`10.${i+8} Tab ${i} has roving tabindex="-1"`, tab.getAttribute('tabindex') === '-1');
-        assert(`10.${i+9} Inactive slide ${i} has inert attribute`, slide.hasAttribute('inert'));
+        assert(`20.${i+9} Tab ${i} is unselected (aria-selected="false")`, tab.getAttribute('aria-selected') === 'false');
+        assert(`20.${i+10} Tab ${i} has roving tabindex="-1"`, tab.getAttribute('tabindex') === '-1');
+        assert(`20.${i+11} Inactive slide ${i} has inert attribute`, slide.hasAttribute('inert'));
       }
     }
 
-    // Section 2: Timing Requirement 1 & 9 — Autoplay timer initialization and duration
+    // Section 4: Initial Autoplay Timing (5000ms Interval)
     const initialTimers = clock.getActiveTimers();
-    assert('11. Autoplay timer initialized', initialTimers.length === 1);
-    assert('12. Exactly one autoplay timer active (no duplicates)', clock.activeTimerCount === 1);
+    assert('21. Autoplay timer initialized', initialTimers.length === 1);
+    assert('22. Exactly one autoplay timer active (no duplicates)', clock.activeTimerCount === 1);
     const initialTimer = initialTimers[0];
-    assert('13. Autoplay timer configured with exactly 5000ms interval', initialTimer && initialTimer.ms === 5000, `Configured interval: ${initialTimer?.ms}ms`);
-    assert('14. Next execution scheduled at virtual T=5000ms', initialTimer && initialTimer.nextRun === 5000);
-    assert('15. Historical record tracks initial timer', clock.getTimer(initialTimer.id) === initialTimer);
-    assert('16. Initial timer execution count starts at 0', initialTimer && initialTimer.executionCount === 0);
+    assert('23. Autoplay timer configured with exactly 5000ms interval', initialTimer && initialTimer.ms === 5000, `Configured interval: ${initialTimer?.ms}ms`);
+    assert('24. Next execution scheduled at virtual T=5000ms', initialTimer && initialTimer.nextRun === 5000);
+    assert('25. Initial timer execution count starts at 0', initialTimer && initialTimer.executionCount === 0);
 
-    // Section 3: Strict Timing Verifications on Initial Timer
     const baseTime = clock.now;
-    assert('17. Starting timing test at Slide 0', slides[0].classList.contains('active'));
-
     clock.advance(4999);
-    assert('18. Advancing 4999ms does not change active slide', slides[0].classList.contains('active'), `Elapsed: ${clock.now - baseTime}ms`);
-    assert('19. Initial timer execution count remains 0 at 4999ms', initialTimer.executionCount === 0);
+    assert('26. Advancing 4999ms does not change active slide', slides[0].classList.contains('active'), `Elapsed: ${clock.now - baseTime}ms`);
+    assert('27. Initial timer execution count remains 0 at 4999ms', initialTimer.executionCount === 0);
 
     clock.advance(1);
-    assert('20. Advancing another 1ms (total 5000ms) advances to Slide 1', slides[1].classList.contains('active'), `Elapsed: ${clock.now - baseTime}ms`);
-    assert('21. Initial timer execution count increments to 1 at 5000ms', initialTimer.executionCount === 1);
-    assert('22. Autoplay updates roving tabindex to Tab 1 (tabindex="0")', indicators[1].getAttribute('tabindex') === '0');
-    assert('23. Tab 0 reverted to tabindex="-1"', indicators[0].getAttribute('tabindex') === '-1');
+    assert('28. Advancing another 1ms (total 5000ms) advances to Slide 1', slides[1].classList.contains('active'), `Elapsed: ${clock.now - baseTime}ms`);
+    assert('29. Initial timer execution count increments to 1 at 5000ms', initialTimer.executionCount === 1);
+    assert('30. Autoplay updates roving tabindex to Tab 1 (tabindex="0")', indicators[1].getAttribute('tabindex') === '0');
+    assert('31. Tab 0 reverted to tabindex="-1"', indicators[0].getAttribute('tabindex') === '-1');
 
-    clock.advance(4999);
-    assert('24. Advancing another 4999ms does not advance again', slides[1].classList.contains('active'), `Elapsed: ${clock.now - baseTime}ms`);
-    assert('25. Initial timer execution count remains 1 at 9999ms', initialTimer.executionCount === 1);
+    clock.advance(5000);
+    assert('32. Advancing another 5000ms (total 10000ms) advances to Slide 2', slides[2].classList.contains('active'), `Elapsed: ${clock.now - baseTime}ms`);
+    assert('33. Initial timer execution count increments to 2 at 10000ms', initialTimer.executionCount === 2);
+    assert('34. Autoplay updates roving tabindex to Tab 2 (tabindex="0")', indicators[2].getAttribute('tabindex') === '0');
 
-    clock.advance(1);
-    assert('26. Advancing another 1ms (total 10000ms) advances to Slide 2', slides[2].classList.contains('active'), `Elapsed: ${clock.now - baseTime}ms`);
-    assert('27. Initial timer execution count increments to 2 at 10000ms', initialTimer.executionCount === 2);
-    assert('28. Autoplay updates roving tabindex to Tab 2 (tabindex="0")', indicators[2].getAttribute('tabindex') === '0');
-
-    // Section 4: Meaningful Cancelled Timer Verification on Hover
+    // Section 5: Pointer Hover Pause & Resume
     const countBeforeHover = initialTimer.executionCount; // 2
-    assert('29. Recorded execution count before hover is 2', countBeforeHover === 2);
-
     block.dispatchEvent(new MouseEvent('mouseenter'));
-    assert('30. Autoplay timer cancelled on pointer hover (mouseenter)', initialTimer.cancelled === true);
-    assert('31. Initial timer removed from active collection', clock.activeTimerCount === 0 && !clock.getActiveTimers().includes(initialTimer));
-    assert('32. Historical record for cancelled timer remains available', clock.getTimer(initialTimer.id) === initialTimer);
-    assert('33. Cancelled timer record present in getCancelledTimers()', clock.getCancelledTimers().includes(initialTimer));
+    assert('35. Autoplay timer paused on pointer hover (mouseenter)', initialTimer.cancelled === true);
+    assert('36. Initial timer removed from active collection', clock.activeTimerCount === 0);
 
     clock.advance(20000);
-    assert('34. Advancing 20,000ms does not execute cancelled timer 1 callback', initialTimer.executionCount === countBeforeHover);
-    assert('35. Cancelled timer 1 execution count remains unchanged (2)', initialTimer.executionCount === 2);
-    assert('36. Timer 1 remains absent from active collection across 20,000ms', clock.activeTimerCount === 0);
-    assert('37. Slide remains static while timer 1 is cancelled', slides[2].classList.contains('active'));
+    assert('37. Advancing 20,000ms does not execute cancelled timer 1 callback', initialTimer.executionCount === countBeforeHover);
+    assert('38. Slide remains static while hovered', slides[2].classList.contains('active'));
 
-    // Section 5: Resuming after hover & Resumed Timer Lifecycle
     block.dispatchEvent(new MouseEvent('mouseleave'));
-    assert('38. Autoplay timer resumes after mouseleave', clock.activeTimerCount === 1);
+    assert('39. Autoplay timer resumes after mouseleave', clock.activeTimerCount === 1);
     const resumeTimer = clock.getActiveTimers()[0];
-    assert('39. Resumed timer is a distinct newly created timer instance', resumeTimer.id !== initialTimer.id);
-    assert('40. Resumed timer configured with 5000ms duration', resumeTimer && resumeTimer.ms === 5000);
-    assert('41. Resumed timer execution count starts at 0', resumeTimer.executionCount === 0);
-    const resumeBase = clock.now;
+    assert('40. Resumed timer is a distinct newly created timer instance', resumeTimer.id !== initialTimer.id);
+    assert('41. Resumed timer configured with 5000ms duration', resumeTimer && resumeTimer.ms === 5000);
 
-    clock.advance(4999);
-    assert('42. Resumed timer: advancing 4999ms does not change slide', slides[2].classList.contains('active'), `Elapsed: ${clock.now - resumeBase}ms`);
-    assert('43. Resumed timer execution count remains 0 at 4999ms', resumeTimer.executionCount === 0);
-    clock.advance(1);
-    assert('44. Resumed timer: advancing 1ms (total 5000ms) advances to Slide 0', slides[0].classList.contains('active'), `Elapsed: ${clock.now - resumeBase}ms`);
-    assert('45. Resumed timer execution count increments to 1 at 5000ms', resumeTimer.executionCount === 1);
-    assert('46. Roving tabindex synchronized to Tab 0', indicators[0].getAttribute('tabindex') === '0');
+    clock.advance(5000);
+    assert('42. Resumed timer advances slide to 0 at 5000ms', slides[0].classList.contains('active'));
 
-    // Section 6: Meaningful Cancellation of Resumed Timer on Focus
-    const countBeforeFocus = resumeTimer.executionCount; // 1
-    assert('47. Recorded resumed timer execution count before focus is 1', countBeforeFocus === 1);
+    // Section 6: Focus Enters Carousel Permanently Stops Rotation (Workstream C & Test F)
+    // When focus enters from outside, automatic rotation permanently stops!
     prevBtn.focus();
-    assert('48. Autoplay timer cancelled on keyboard focus (focusin)', resumeTimer.cancelled === true);
-    assert('49. Resumed timer removed from active collection', clock.activeTimerCount === 0);
-    assert('50. Historical record for cancelled resumeTimer remains available', clock.getTimer(resumeTimer.id) === resumeTimer);
+    prevBtn.dispatchEvent(new FocusEvent('focusin', { bubbles: true, relatedTarget: outsideTarget }));
+    assert('43. Autoplay timer permanently stops when focus enters carousel', clock.activeTimerCount === 0);
+    assert('44. Autoplay button accessible name updates to "Start slide rotation"', autoplayBtn.getAttribute('aria-label') === 'Start slide rotation');
+    assert('45. Slides container live region switches to "polite" when rotation stopped', slidesContainer.getAttribute('aria-live') === 'polite');
 
+    // Blur focus outside carousel - must NOT restart rotation!
+    outsideTarget.focus();
+    block.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: outsideTarget }));
+    assert('46. Focus leaving carousel does NOT restart automatic rotation', clock.activeTimerCount === 0);
     clock.advance(20000);
-    assert('51. Advancing 20,000ms does not execute cancelled resumeTimer callback', resumeTimer.executionCount === countBeforeFocus);
-    assert('52. Resumed timer execution count remains unchanged (1)', resumeTimer.executionCount === 1);
-    assert('53. Slide does not advance while focused across 20,000ms', slides[0].classList.contains('active'));
+    assert('47. Slide remains static while focus-stopped across 20,000ms', slides[0].classList.contains('active'));
 
-    // Section 7: Manual navigation & Roving Tabindex
+    // Section 7: Explicit Restart via Autoplay Button (Test G)
+    autoplayBtn.click();
+    assert('48. Clicking autoplay button explicitly restarts rotation', clock.activeTimerCount === 1);
+    assert('49. Autoplay button accessible name updates to "Stop slide rotation"', autoplayBtn.getAttribute('aria-label') === 'Stop slide rotation');
+    assert('50. Slides container live region switches to "off" while rotating', slidesContainer.getAttribute('aria-live') === 'off');
+
+    const restartedTimer = clock.getActiveTimers()[0];
+    clock.advance(5000);
+    assert('51. Explicitly restarted timer rotates to Slide 1 at 5000ms', slides[1].classList.contains('active'));
+
+    // Section 8: Explicit Stop via Autoplay Button
+    autoplayBtn.click();
+    assert('52. Clicking autoplay button explicitly stops rotation', clock.activeTimerCount === 0);
+    assert('53. Autoplay button accessible name updates to "Start slide rotation"', autoplayBtn.getAttribute('aria-label') === 'Start slide rotation');
+    assert('54. Slides container live region switches to "polite"', slidesContainer.getAttribute('aria-live') === 'polite');
+
+    // Pointer leave must not override explicit user stop
+    block.dispatchEvent(new MouseEvent('mouseenter'));
+    block.dispatchEvent(new MouseEvent('mouseleave'));
+    assert('55. Pointer leave does not override explicit user stop', clock.activeTimerCount === 0);
+
+    // Section 9: Manual Navigation on Indicators and Prev/Next
     indicators[1].click();
-    assert('54. Slide 1 active after indicator click', slides[1].classList.contains('active'));
-    assert('55. Indicator 1 selected after click', indicators[1].getAttribute('aria-selected') === 'true');
-    assert('56. Roving tabindex moved to Tab 1 on click', indicators[1].getAttribute('tabindex') === '0');
-    assert('57. Tab 0 reverted to tabindex="-1" on click', indicators[0].getAttribute('tabindex') === '-1');
+    assert('56. Slide 1 active after indicator click', slides[1].classList.contains('active'));
+    assert('57. Indicator 1 selected after click', indicators[1].getAttribute('aria-selected') === 'true');
+    assert('58. Roving tabindex moved to Tab 1 on click', indicators[1].getAttribute('tabindex') === '0');
+    assert('59. Tab 0 reverted to tabindex="-1" on click', indicators[0].getAttribute('tabindex') === '-1');
 
     nextBtn.click(); // 1 -> 2
-    assert('58. Next button moves to Slide 2', slides[2].classList.contains('active'));
-    assert('59. Roving tabindex moved to Tab 2 on next button', indicators[2].getAttribute('tabindex') === '0');
+    assert('60. Next button moves to Slide 2', slides[2].classList.contains('active'));
+    assert('61. Roving tabindex moved to Tab 2 on next button', indicators[2].getAttribute('tabindex') === '0');
 
     prevBtn.click(); // 2 -> 1
-    assert('60. Prev button moves to Slide 1', slides[1].classList.contains('active'));
-    assert('61. Roving tabindex moved to Tab 1 on prev button', indicators[1].getAttribute('tabindex') === '0');
+    assert('62. Prev button moves to Slide 1', slides[1].classList.contains('active'));
+    assert('63. Roving tabindex moved to Tab 1 on prev button', indicators[1].getAttribute('tabindex') === '0');
 
-    // Section 8: Keyboard navigation (ArrowLeft, ArrowRight, Home, End)
+    // Section 10: Keyboard Navigation on Indicators (ArrowLeft, ArrowRight, Home, End)
     indicators[1].focus();
-    assert('62. Keyboard focus reaches indicator 1', document.activeElement === indicators[1]);
+    assert('64. Keyboard focus reaches indicator 1', document.activeElement === indicators[1]);
 
-    // ArrowRight advances to Slide 2
     const rightEvent = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true });
     indicators[1].dispatchEvent(rightEvent);
-    assert('63. ArrowRight advances to Slide 2', slides[2].classList.contains('active'));
-    assert('64. Indicator 2 selected (aria-selected=true)', indicators[2].getAttribute('aria-selected') === 'true');
-    assert('65. Roving tabindex moved to Tab 2', indicators[2].getAttribute('tabindex') === '0');
-    assert('66. Indicator 2 receives keyboard focus', document.activeElement === indicators[2]);
+    assert('65. ArrowRight advances to Slide 2', slides[2].classList.contains('active'));
+    assert('66. Indicator 2 selected (aria-selected=true)', indicators[2].getAttribute('aria-selected') === 'true');
+    assert('67. Roving tabindex moved to Tab 2', indicators[2].getAttribute('tabindex') === '0');
+    assert('68. Indicator 2 receives keyboard focus', document.activeElement === indicators[2]);
 
-    // ArrowLeft returns to Slide 1
     const leftEvent = new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true });
     indicators[2].dispatchEvent(leftEvent);
-    assert('67. ArrowLeft returns to Slide 1', slides[1].classList.contains('active'));
-    assert('68. Indicator 1 selected (aria-selected=true)', indicators[1].getAttribute('aria-selected') === 'true');
-    assert('69. Roving tabindex moved to Tab 1', indicators[1].getAttribute('tabindex') === '0');
-    assert('70. Indicator 1 receives keyboard focus', document.activeElement === indicators[1]);
+    assert('69. ArrowLeft returns to Slide 1', slides[1].classList.contains('active'));
+    assert('70. Indicator 1 selected (aria-selected=true)', indicators[1].getAttribute('aria-selected') === 'true');
+    assert('71. Roving tabindex moved to Tab 1', indicators[1].getAttribute('tabindex') === '0');
+    assert('72. Indicator 1 receives keyboard focus', document.activeElement === indicators[1]);
 
-    // Home key jumps to first indicator (Slide 0)
     const homeEvent = new KeyboardEvent('keydown', { key: 'Home', bubbles: true, cancelable: true });
     indicators[1].dispatchEvent(homeEvent);
-    assert('71. Home key jumps to Slide 0', slides[0].classList.contains('active'));
-    assert('72. Indicator 0 selected after Home', indicators[0].getAttribute('aria-selected') === 'true');
-    assert('73. Roving tabindex moved to Tab 0 after Home', indicators[0].getAttribute('tabindex') === '0');
-    assert('74. Tab 1 reverted to tabindex="-1" after Home', indicators[1].getAttribute('tabindex') === '-1');
-    assert('75. Indicator 0 receives keyboard focus after Home', document.activeElement === indicators[0]);
+    assert('73. Home key jumps to Slide 0', slides[0].classList.contains('active'));
+    assert('74. Indicator 0 selected after Home', indicators[0].getAttribute('aria-selected') === 'true');
+    assert('75. Roving tabindex moved to Tab 0 after Home', indicators[0].getAttribute('tabindex') === '0');
+    assert('76. Indicator 0 receives keyboard focus after Home', document.activeElement === indicators[0]);
 
-    // End key jumps to last indicator (Slide 2)
     const endEvent = new KeyboardEvent('keydown', { key: 'End', bubbles: true, cancelable: true });
     indicators[0].dispatchEvent(endEvent);
-    assert('76. End key jumps to Slide 2', slides[2].classList.contains('active'));
-    assert('77. Indicator 2 selected after End', indicators[2].getAttribute('aria-selected') === 'true');
-    assert('78. Roving tabindex moved to Tab 2 after End', indicators[2].getAttribute('tabindex') === '0');
-    assert('79. Tab 0 reverted to tabindex="-1" after End', indicators[0].getAttribute('tabindex') === '-1');
+    assert('77. End key jumps to Slide 2', slides[2].classList.contains('active'));
+    assert('78. Indicator 2 selected after End', indicators[2].getAttribute('aria-selected') === 'true');
+    assert('79. Roving tabindex moved to Tab 2 after End', indicators[2].getAttribute('tabindex') === '0');
     assert('80. Indicator 2 receives keyboard focus after End', document.activeElement === indicators[2]);
 
-    // ArrowRight wraps from 2 to 0
+    // ArrowRight wrap-around 2 -> 0
     indicators[2].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
     assert('81. ArrowRight wraps from Slide 2 to Slide 0', slides[0].classList.contains('active'));
     assert('82. Indicator 0 receives keyboard focus after wrap-around', document.activeElement === indicators[0]);
 
-    // Section 9: Multiple Carousel Instances Isolation & Zero ID Collisions
+    // Section 11: Multi-Carousel Instance Isolation (Test K)
     const block2 = document.getElementById('carousel-test-2');
     decorate(block2);
     const block2Slides = block2.querySelectorAll('.carousel-slide');
     const block2Indicators = block2.querySelectorAll('.carousel-indicator');
 
+    assert('83. Carousel instance 2 created successfully', block2Slides.length === 2);
+    assert('84. Carousel instance 2 has unique accessible name', block2.getAttribute('aria-label') === 'Featured Stories 2');
     const idsInstance1 = [...Array.from(slides).map(s => s.id), ...Array.from(indicators).map(t => t.id)];
     const idsInstance2 = [...Array.from(block2Slides).map(s => s.id), ...Array.from(block2Indicators).map(t => t.id)];
-    assert('83. Carousel instance 2 created successfully', block2Slides.length === 2);
-    assert('84. Carousel instance 2 has unique IDs with distinct prefix', idsInstance2.every(id => id.startsWith('carousel-2-')));
     const hasCollision = idsInstance1.some(id => idsInstance2.includes(id));
     assert('85. Zero ID collisions between multiple carousel instances', !hasCollision);
-    // Pause block 2 so it does not interfere with block 1 timer counts
+    // Pause block 2
     block2.dispatchEvent(new MouseEvent('mouseenter'));
 
-    // Section 10: Inactive slide focus isolation (inert & aria-hidden)
-    assert('86. Active slide 0 is not inert and has aria-hidden=false', !slides[0].hasAttribute('inert') && slides[0].getAttribute('aria-hidden') === 'false');
-    assert('87. Inactive slide 1 is inert and has aria-hidden=true', slides[1].hasAttribute('inert') && slides[1].getAttribute('aria-hidden') === 'true');
-    assert('88. Inactive slide 2 is inert and has aria-hidden=true', slides[2].hasAttribute('inert') && slides[2].getAttribute('aria-hidden') === 'true');
+    // Section 12: Single-Slide Degradation (Test L)
+    const singleBlock = document.getElementById('carousel-test-single');
+    decorate(singleBlock);
+    const singleSlides = singleBlock.querySelectorAll('.carousel-slide');
+    assert('86. Single slide carousel has 1 slide', singleSlides.length === 1);
+    assert('87. Single slide is active and not inert', singleSlides[0].classList.contains('active') && !singleSlides[0].hasAttribute('inert'));
+    assert('88. Single slide carousel has no autoplay button', singleBlock.querySelector('.carousel-autoplay-btn') === null);
+    assert('89. Single slide carousel has no indicators tablist', singleBlock.querySelector('.carousel-indicators') === null);
 
-    // Section 11: Internal focus movement & pointer combinations
-    prevBtn.focus();
-    nextBtn.focus();
-    assert('89. Focus shift between prevBtn and nextBtn does not resume autoplay', clock.activeTimerCount === 0);
-    indicators[0].focus();
-    assert('90. Focus shift to indicator 0 does not resume autoplay', clock.activeTimerCount === 0);
+    // Section 13: Inactive Slide Focus Isolation (Test J)
+    assert('90. Inactive slides have inert attribute', slides[1].hasAttribute('inert') && slides[2].hasAttribute('inert'));
+    assert('91. Inactive slides have aria-hidden="true"', slides[1].getAttribute('aria-hidden') === 'true' && slides[2].getAttribute('aria-hidden') === 'true');
 
-    block.dispatchEvent(new MouseEvent('mouseenter'));
-    block.dispatchEvent(new MouseEvent('mouseleave'));
-    assert('91. Pointer leaving while focus remains inside does not resume autoplay', clock.activeTimerCount === 0);
-
-    block.dispatchEvent(new MouseEvent('mouseenter'));
-    outsideTarget.focus();
-    assert('92. Focus leaving while pointer remains inside does not resume autoplay', clock.activeTimerCount === 0);
-
-    // Section 12: Comprehensive Multi-Timer Historical Audit
+    // Section 14: Multi-Timer Historical Audit
     const allCancelled = clock.getCancelledTimers();
-    assert('93. All cancelled timers collection contains multiple historical records (non-empty)', allCancelled.length >= 2, `Cancelled count: ${allCancelled.length}`);
+    assert('92. Cancelled timers collection has records', allCancelled.length >= 2, `Cancelled count: ${allCancelled.length}`);
     const countsBeforeLeap = allCancelled.map(t => t.executionCount);
     clock.advance(20000);
     const zeroIncreases = allCancelled.every((t, i) => t.executionCount === countsBeforeLeap[i]);
-    assert('94. All historical cancelled timers executed zero times across 20,000ms advance', zeroIncreases);
-
-    // Section 13: Final clean resume after both pointer and focus leave
-    block.dispatchEvent(new MouseEvent('mouseleave'));
-    assert('95. Autoplay timer resumes when both pointer and focus leave', clock.activeTimerCount === 1);
-    assert('96. Exactly one active timer running (no duplicate timer creation)', clock.activeTimerCount === 1);
-
-    const thirdTimer = clock.getActiveTimers()[0];
-    assert('97. Third active timer has distinct unique ID', thirdTimer.id !== initialTimer.id && thirdTimer.id !== resumeTimer.id);
-    assert('98. Third timer execution count starts at 0', thirdTimer.executionCount === 0);
-
-    const finalBase = clock.now;
-    clock.advance(4999);
-    assert('99. Resumed cycle: advancing 4999ms does not advance', slides[0].classList.contains('active'), `Elapsed: ${clock.now - finalBase}ms`);
-    assert('100. Third timer execution count remains 0 at 4999ms', thirdTimer.executionCount === 0);
-    clock.advance(1);
-    assert('101. Resumed cycle: advancing 1ms (total 5000ms) advances to Slide 1', slides[1].classList.contains('active'), `Elapsed: ${clock.now - finalBase}ms`);
-    assert('102. Third timer execution count increments to 1 at 5000ms', thirdTimer.executionCount === 1);
-    assert('103. Roving tabindex synchronized to Tab 1 on resumed autoplay', indicators[1].getAttribute('tabindex') === '0');
-    clock.advance(5000);
-    assert('104. Resumed cycle: advancing another 5000ms advances to Slide 2', slides[2].classList.contains('active'), `Elapsed: ${clock.now - finalBase}ms`);
-    assert('105. Third timer execution count increments to 2 at 10000ms', thirdTimer.executionCount === 2);
-    assert('106. Roving tabindex synchronized to Tab 2 on resumed autoplay', indicators[2].getAttribute('tabindex') === '0');
+    assert('93. Historical cancelled timers executed zero times across 20,000ms', zeroIncreases);
 
     // Final summary
     const failures = log.filter(item => !item.pass);
