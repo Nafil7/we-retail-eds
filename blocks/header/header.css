@@ -4,11 +4,13 @@
    ========================================================================== */
 
 header {
-  position: relative;
-  z-index: 1000;
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
-  background-color: #fff;
-  border-bottom: 1px solid #e5e5e5;
+  z-index: 1000;
+  background: transparent;
+  border-bottom: none;
 }
 
 /* 1. Black Utility Bar */
@@ -17,10 +19,11 @@ header {
   color: #ccc;
   font-size: 11px;
   font-family: var(--body-font-family, sans-serif);
-  height: 32px;
+  height: 36px;
   display: flex;
   align-items: center;
   position: relative;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .we-header-utility .we-header-container {
@@ -71,7 +74,7 @@ header {
   border: 1px solid #333;
   min-width: 160px;
   z-index: 1001;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
 }
 
 .we-lang.open .we-lang-dropdown {
@@ -107,9 +110,9 @@ header {
   color: #fff;
 }
 
-/* 2. Main White Navigation Bar */
+/* 2. Main Transparent Navigation Bar (Overlaid on Hero) */
 .we-header-main {
-  background-color: #fff;
+  background-color: transparent;
   height: 75px;
   display: flex;
   align-items: center;
@@ -133,22 +136,22 @@ header {
   font-family: var(--heading-font-family, 'Montserrat', sans-serif);
   font-size: 26px;
   letter-spacing: 2px;
-  color: #222;
+  color: #fff;
 }
 
 .we-logo-we {
   font-weight: 800;
-  color: #000;
+  color: #fff;
 }
 
 .we-logo-dot {
-  color: #eb1c24;
+  color: #ed1c24;
   font-weight: 800;
 }
 
 .we-logo-retail {
   font-weight: 300;
-  color: #444;
+  color: #fff;
 }
 
 /* Primary Nav Links */
@@ -158,7 +161,7 @@ header {
 }
 
 .we-nav a {
-  color: #222;
+  color: #fff;
   font-family: var(--heading-font-family, 'Montserrat', sans-serif);
   font-size: 14px;
   font-weight: 700;
@@ -171,8 +174,8 @@ header {
 }
 
 .we-nav a:hover {
-  color: #eb1c24;
-  border-bottom: 2px solid #eb1c24;
+  color: #ed1c24;
+  border-bottom: 2px solid #ed1c24;
 }
 
 /* Header Actions (Search / Cart) */
@@ -199,102 +202,49 @@ header {
   opacity: 0;
   pointer-events: none;
   transition: width 0.3s ease, padding 0.3s ease, opacity 0.3s ease, border-color 0.3s ease;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
 }
 
-.we-search-form.active .we-search-input,
-.we-search-input.active,
-.we-search-input:focus {
-  width: 160px;
+.we-search-form.active .we-search-input {
+  width: 180px;
   opacity: 1;
   padding: 6px 12px;
-  border: 1px solid #ccc;
   pointer-events: auto;
-}
-
-.we-search-input:focus {
-  border-color: #eb1c24;
+  border-color: #555;
+  border-radius: 4px;
+  margin-right: 6px;
 }
 
 .we-search-btn {
   background: none;
   border: none;
+  color: #fff;
+  font-size: 18px;
   cursor: pointer;
-  font-size: 16px;
-  padding: 6px 8px;
-  color: #333;
+  padding: 4px 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: color 0.2s ease;
 }
 
-.we-search-btn:hover,
-.we-search-btn:focus-visible {
-  color: #eb1c24;
+.we-search-btn:hover {
+  color: #ed1c24;
 }
 
+/* Mobile & Tablet Fallback */
 @media (max-width: 991px) {
-  .we-header-main .we-header-container {
-    flex-wrap: wrap;
-    height: auto;
-    padding: 10px 15px;
+  header {
+    position: relative;
+    background-color: #1a1a1a;
   }
-  .we-nav {
-    order: 3;
-    width: 100%;
-    overflow-x: auto;
-    gap: 16px;
-    padding: 8px 0;
-  }
-  .we-header-utility .we-header-container {
-    padding: 0 15px;
-  }
-  .we-user-nav {
-    overflow-x: auto;
-  }
-  .we-user-nav a {
-    margin-left: 12px;
-  }
-}
 
-@media (max-width: 575px) {
-  .we-header-utility {
-    height: 28px;
-    font-size: 10px;
-  }
-  .we-header-utility .we-header-container {
-    padding: 0 10px;
-  }
-  .we-user-nav a:not(.we-cart) {
-    display: none;
-  }
   .we-header-main {
-    height: auto;
+    background-color: #1a1a1a;
   }
-  .we-header-main .we-header-container {
-    padding: 8px 10px;
-  }
-  .we-logo a {
-    font-size: 20px;
-    letter-spacing: 1px;
-  }
+
   .we-nav {
-    gap: 14px;
-    padding: 6px 0 2px;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-  .we-nav::-webkit-scrollbar {
     display: none;
-  }
-  .we-nav a {
-    font-size: 12px;
-    letter-spacing: 1px;
-    white-space: nowrap;
-  }
-  .we-search-input {
-    width: 90px;
-    font-size: 12px;
-    padding: 4px 8px;
   }
 }

@@ -6,10 +6,12 @@
 .carousel {
   position: relative;
   width: 100%;
+  max-width: 1170px;
   margin: 30px auto 50px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
 }
 
 .carousel-slides {
@@ -34,7 +36,7 @@
 .carousel-slide picture,
 .carousel-slide img {
   width: 100%;
-  height: 460px;
+  height: 480px;
   object-fit: cover;
   display: block;
 }
@@ -45,16 +47,16 @@
   bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.85) 100%);
   color: #fff;
-  padding: 40px 30px 24px;
+  padding: 50px 36px 32px;
   text-align: left;
 }
 
 .carousel-slide h3,
 .carousel-slide h2 {
   font-family: var(--heading-font-family, 'Montserrat', sans-serif);
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 700;
   color: #fff;
   margin: 0 0 8px;
@@ -62,9 +64,9 @@
 }
 
 .carousel-slide p {
-  color: #ddd;
-  font-size: 14px;
-  margin: 0 0 12px;
+  color: #eee;
+  font-size: 15px;
+  margin: 0 0 14px;
 }
 
 .carousel-slide a {
@@ -74,8 +76,9 @@
   text-transform: uppercase;
   letter-spacing: 1px;
   font-size: 13px;
-  border-bottom: 2px solid #eb1c24;
+  border-bottom: 2px solid #ed1c24;
   padding-bottom: 2px;
+  text-decoration: none;
 }
 
 /* Indicators (3 circular dots) */

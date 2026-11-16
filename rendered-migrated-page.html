@@ -148,6 +148,7 @@
     import decorateHeader from '/blocks/header/header.js';
     import decorateHero from '/blocks/hero/hero.js';
     import decorateColumns from '/blocks/columns/columns.js';
+    import decorateCards from '/blocks/cards/cards.js';
     import decorateFooter from '/blocks/footer/footer.js';
     import decorateCarousel from '/blocks/carousel/carousel.js';
 
@@ -156,6 +157,7 @@
     window.__decorateHero = decorateHero;
     document.querySelectorAll('.hero').forEach(decorateHero);
     document.querySelectorAll('.columns').forEach(decorateColumns);
+    document.querySelectorAll('.cards').forEach(decorateCards);
     const footer = document.querySelector('footer .footer') || document.querySelector('footer');
     if (footer) decorateFooter(footer);
     document.querySelectorAll('.carousel').forEach(decorateCarousel);

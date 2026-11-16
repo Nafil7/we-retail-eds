@@ -11,15 +11,17 @@
 
 .hero {
   position: relative;
-  min-height: 460px;
+  min-height: 540px;
   height: auto;
   overflow: hidden;
   display: flex;
   align-items: flex-end;
   justify-content: flex-start;
-  background-color: #555;
+  background-color: #222;
   color: #fff;
   margin-bottom: 40px;
+  padding-top: 120px;
+  box-sizing: border-box;
 }
 
 /* Background Image Container */
@@ -44,7 +46,7 @@
   display: block;
 }
 
-/* Authentic Gradient Contrast Overlay — high contrast for lower-left text */
+/* Authentic Gradient Contrast Overlay */
 .hero::after {
   content: "";
   position: absolute;
@@ -52,7 +54,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0.4) 50%, rgba(0, 0, 0, 0.75) 100%);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.2) 40%, rgba(0, 0, 0, 0.75) 100%);
   z-index: 2;
   pointer-events: none;
 }
@@ -64,24 +66,38 @@
   z-index: 3;
   width: 100%;
   max-width: 1224px;
-  padding: 48px 32px 56px;
+  padding: 0 32px 56px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   text-align: left;
+  box-sizing: border-box;
+}
+
+/* Subtitle placed above H1 in visual order */
+.hero .hero-content > p:first-of-type {
+  order: -1;
+  font-size: 22px;
+  font-weight: 300;
+  color: #fff;
+  margin: 0 0 8px;
+  text-transform: none;
+  text-shadow: 2px 4px 6px rgba(0, 0, 0, 0.6);
+  letter-spacing: 0.5px;
 }
 
 .hero h1 {
   font-family: var(--heading-font-family, 'Montserrat', sans-serif);
-  font-size: 42px;
+  font-size: 46px;
   font-weight: 700;
   text-transform: uppercase;
   color: #fff;
-  margin: 0 0 16px;
-  line-height: 1.2;
-  text-shadow: 2px 4px 3px rgba(0, 0, 0, 0.5);
+  margin: 0 0 20px;
+  line-height: 1.15;
+  text-shadow: 2px 4px 6px rgba(0, 0, 0, 0.6);
   text-align: left;
+  max-width: 650px;
 }
 
 .hero p {
@@ -89,53 +105,66 @@
   font-weight: 400;
   color: #fff;
   margin: 0 0 24px;
-  text-shadow: 2px 4px 3px rgba(0, 0, 0, 0.5);
+  text-shadow: 2px 4px 6px rgba(0, 0, 0, 0.6);
   text-align: left;
 }
 
 .hero .button-wrapper {
-  margin: 0 0 8px;
+  margin: 8px 0 0;
   text-align: left;
 }
 
-/* Authentic We.Retail .btn-outline-white CTA button */
-.hero a,
-.hero a.button,
-.hero p a {
-  display: inline-block;
-  padding: 12px 32px;
-  background-color: transparent !important;
-  color: #fff !important;
-  border: 2px solid #fff !important;
-  border-radius: 0 !important;
+.hero .button,
+.hero a.button {
+  background-color: #ed1c24;
+  color: #fff;
+  font-family: var(--heading-font-family, 'Montserrat', sans-serif);
+  font-size: 15px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 1.5px;
-  font-size: 14px;
-  text-decoration: none !important;
-  text-shadow: none !important;
-  transition: all 0.25s ease;
+  letter-spacing: 1px;
+  padding: 10px 26px;
+  border: 1px solid #de1219;
+  border-radius: 0;
+  text-shadow: none;
+  display: inline-block;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  text-decoration: none;
 }
 
-.hero a:hover,
-.hero a.button:hover,
-.hero p a:hover {
-  background-color: #fff !important;
-  color: #222 !important;
+.hero .button:hover,
+.hero a.button:hover {
+  background-color: #c7151c;
+  border-color: #b01016;
+  text-decoration: none;
 }
 
+/* Tablet & Mobile responsive */
 @media (max-width: 767px) {
   .hero {
     min-height: 380px;
+    padding-top: 100px;
   }
-  .hero > div:last-child,
+
   .hero .hero-content {
-    padding: 32px 20px 40px;
+    padding: 0 20px 32px;
   }
+
   .hero h1 {
-    font-size: 28px;
+    font-size: 30px;
+    line-height: 1.2;
+    margin-bottom: 12px;
   }
-  .hero p {
+
+  .hero .hero-content > p:first-of-type {
     font-size: 16px;
+    margin-bottom: 6px;
+  }
+
+  .hero .button,
+  .hero a.button {
+    font-size: 13px;
+    padding: 8px 18px;
   }
 }
