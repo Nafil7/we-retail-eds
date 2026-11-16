@@ -2,6 +2,47 @@ import assert from 'assert';
 
 console.log('--- Running Hero Block Regression Test Suite ---');
 
+class MockTextNode {
+  constructor(text = '') {
+    this.nodeType = 3; // Node.TEXT_NODE
+    this.textContent = text;
+    this.parentElement = null;
+  }
+
+  get tagName() {
+    return '#text';
+  }
+
+  get childNodes() {
+    return [];
+  }
+
+  get children() {
+    return [];
+  }
+
+  remove() {
+    if (this.parentElement) {
+      this.parentElement.removeChild(this);
+    }
+  }
+
+  replaceWith(newEl) {
+    if (this.parentElement) {
+      const idx = this.parentElement.children.indexOf(this);
+      if (idx !== -1) {
+        this.parentElement.children.splice(idx, 1, newEl);
+        newEl.parentElement = this.parentElement;
+        this.parentElement = null;
+      }
+    }
+  }
+
+  closest() {
+    return null;
+  }
+}
+
 class MockNode {
   constructor(tag = 'div') {
     this.tagName = tag.toUpperCase();
@@ -138,10 +179,12 @@ class MockNode {
 
     const walk = (node) => {
       for (const child of node.children) {
-        if (selectors.some(s => this.matches(child, s))) {
-          results.push(child);
+        if (child.nodeType === 1) {
+          if (selectors.some(s => this.matches(child, s))) {
+            results.push(child);
+          }
+          walk(child);
         }
-        walk(child);
       }
     };
     walk(this);
@@ -152,6 +195,9 @@ class MockNode {
 globalThis.document = {
   createElement(tag) {
     return new MockNode(tag);
+  },
+  createTextNode(text) {
+    return new MockTextNode(text);
   }
 };
 
@@ -335,4 +381,62 @@ const decorate = heroModule.default;
   console.log('✓ Test 5 Passed: Idempotency confirmed across repeated executions.');
 }
 
-console.log('--- All 5 Hero Block Regression Tests Passed Successfully ---');
+// Test 6: Direct DOM text nodes handling (unwrapped authored text in cells)
+{
+  const block = new MockNode('div');
+  block.className = 'hero';
+
+  const row = new MockNode('div');
+  const picCell = new MockNode('div');
+  const pic = new MockNode('picture');
+  const img = new MockNode('img');
+  img.setAttribute('src', '/media/trekker-khumbu-valley.jpg');
+  img.setAttribute('alt', 'Winter Gear');
+  pic.appendChild(img);
+  picCell.appendChild(pic);
+
+  const textCell = new MockNode('div');
+  const h1 = new MockNode('h1');
+  h1.textContent = 'Built for the coldest winter on earth';
+  textCell.appendChild(h1);
+
+  // Direct authored text nodes without wrapping p tags
+  const directText1 = document.createTextNode('All-new winter collection');
+  const directText2 = document.createTextNode('Tested in severe sub-zero conditions across Khumbu Valley');
+  textCell.appendChild(directText1);
+  textCell.appendChild(directText2);
+
+  // Authored CTA link without wrapper
+  const ctaLink = new MockNode('a');
+  ctaLink.setAttribute('href', '/content/we-retail/us/en/products/equipment/snow-sports.html');
+  ctaLink.textContent = 'Shop Now';
+  textCell.appendChild(ctaLink);
+
+  row.appendChild(picCell);
+  row.appendChild(textCell);
+  block.appendChild(row);
+
+  decorate(block);
+
+  assert.strictEqual(block.children.length, 2, 'Hero block must have exactly 2 top-level children: hero-image and hero-content');
+  assert.strictEqual(block.children[0].className, 'hero-image');
+  assert.strictEqual(block.children[1].className, 'hero-content');
+
+  const content = block.children[1];
+  assert(content.querySelector('h1'), 'h1 element must be preserved');
+  assert.strictEqual(content.querySelector('h1').textContent, 'Built for the coldest winter on earth');
+
+  const paras = content.querySelectorAll('p');
+  const paraTexts = paras.map(p => p.textContent.trim());
+  assert(paraTexts.includes('All-new winter collection'), 'Direct text node 1 must be preserved verbatim in a paragraph');
+  assert(paraTexts.includes('Tested in severe sub-zero conditions across Khumbu Valley'), 'Direct text node 2 must be preserved verbatim in a paragraph');
+
+  const cta = content.querySelector('a.button.primary');
+  assert(cta, 'CTA anchor must be upgraded to button primary');
+  assert.strictEqual(cta.textContent, 'Shop Now');
+  assert.strictEqual(cta.getAttribute('href'), '/content/we-retail/us/en/products/equipment/snow-sports.html');
+  assert.strictEqual(cta.parentElement.className, 'button-wrapper', 'CTA button must be enclosed in button-wrapper paragraph');
+  console.log('✓ Test 6 Passed: Direct DOM text nodes preserved verbatim without content or link loss.');
+}
+
+console.log('--- All 6 Hero Block Regression Tests Passed Successfully ---');

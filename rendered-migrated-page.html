@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>We.Retail - Parity Verification</title>
+  <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/styles/styles.css">
   <link rel="stylesheet" href="/blocks/header/header.css">
   <link rel="stylesheet" href="/blocks/hero/hero.css">
@@ -11,7 +12,6 @@
   <link rel="stylesheet" href="/blocks/columns/columns.css">
   <link rel="stylesheet" href="/blocks/cards/cards.css">
   <link rel="stylesheet" href="/blocks/footer/footer.css">
-  <link rel="stylesheet" href="/blocks/teaser/teaser.css">
 </head>
 <body>
   <header id="top">
@@ -153,6 +153,7 @@
 
     const header = document.querySelector('header .header') || document.querySelector('header');
     if (header) decorateHeader(header);
+    window.__decorateHero = decorateHero;
     document.querySelectorAll('.hero').forEach(decorateHero);
     document.querySelectorAll('.columns').forEach(decorateColumns);
     const footer = document.querySelector('footer .footer') || document.querySelector('footer');

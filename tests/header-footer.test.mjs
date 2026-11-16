@@ -393,7 +393,21 @@ const decorateFooter = footerModule.default;
   searchBtn.dispatchEvent({ type: 'click', preventDefault() { } });
   assert(!searchForm.classList.contains('active'));
 
-  console.log('✓ Test 3 Passed: Search expand, focus, empty handling, and Escape verified.');
+  // Non-empty query submission via Enter / submit event
+  searchBtn.dispatchEvent({ type: 'click', preventDefault() { } });
+  assert(searchForm.classList.contains('active'));
+  searchInput.value = 'hiking boots & jackets';
+  let defaultPrevented = false;
+  searchForm.dispatchEvent({
+    type: 'submit',
+    preventDefault() { defaultPrevented = true; }
+  });
+  assert.strictEqual(defaultPrevented, false, 'Non-empty search query must allow native GET submission to action URL');
+  assert.strictEqual(searchInput.value, 'hiking boots & jackets', 'Query value must be preserved');
+  assert.strictEqual(searchForm.getAttribute('action'), '/content/we-retail/us/en/search.html');
+  assert.strictEqual(searchInput.getAttribute('name'), 'fulltext');
+
+  console.log('✓ Test 3 Passed: Search expand, focus, empty handling, non-empty submit, and Escape verified.');
 }
 
 // Test 4: Footer Links (Terms of Use href="#" & Ride to the Top #top)
