@@ -15,8 +15,8 @@
   height: auto;
   overflow: hidden;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-end;
+  justify-content: flex-start;
   background-color: #555;
   color: #fff;
   margin-bottom: 40px;
@@ -44,7 +44,7 @@
   display: block;
 }
 
-/* Authentic Gradient Contrast Overlay */
+/* Authentic Gradient Contrast Overlay — high contrast for lower-left text */
 .hero::after {
   content: "";
   position: absolute;
@@ -52,24 +52,24 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.55));
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0.4) 50%, rgba(0, 0, 0, 0.75) 100%);
   z-index: 2;
   pointer-events: none;
 }
 
-/* Hero Content Wrapper */
+/* Hero Content Wrapper — Lower-Left Alignment within 1224px Container */
 .hero > div:last-child,
 .hero .hero-content {
   position: relative;
   z-index: 3;
   width: 100%;
   max-width: 1224px;
-  padding: 40px 24px;
+  padding: 48px 32px 56px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
+  align-items: flex-start;
+  text-align: left;
 }
 
 .hero h1 {
@@ -81,6 +81,7 @@
   margin: 0 0 16px;
   line-height: 1.2;
   text-shadow: 2px 4px 3px rgba(0, 0, 0, 0.5);
+  text-align: left;
 }
 
 .hero p {
@@ -89,6 +90,12 @@
   color: #fff;
   margin: 0 0 24px;
   text-shadow: 2px 4px 3px rgba(0, 0, 0, 0.5);
+  text-align: left;
+}
+
+.hero .button-wrapper {
+  margin: 0 0 8px;
+  text-align: left;
 }
 
 /* Authentic We.Retail .btn-outline-white CTA button */
@@ -120,6 +127,10 @@
 @media (max-width: 767px) {
   .hero {
     min-height: 380px;
+  }
+  .hero > div:last-child,
+  .hero .hero-content {
+    padding: 32px 20px 40px;
   }
   .hero h1 {
     font-size: 28px;

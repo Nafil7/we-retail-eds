@@ -46,27 +46,39 @@ export default function decorate(block) {
   const imageWrapper = document.createElement('div');
   imageWrapper.className = 'hero-image';
   if (pic) {
-    imageWrapper.appendChild(pic.closest('picture') || pic);
+    const picContainer = pic.closest('picture') || pic;
+    imageWrapper.appendChild(picContainer);
   }
 
   // Create unified content wrapper for all non-picture elements
   const contentWrapper = document.createElement('div');
   contentWrapper.className = 'hero-content';
 
-  // Collect all headings, paragraphs, and standalone links across rows/cells
-  // preserving authored content and links verbatim
-  const elementsToCollect = [...block.querySelectorAll('h1, h2, h3, h4, h5, h6, p, a')];
-  const handled = new Set();
-
-  elementsToCollect.forEach((el) => {
-    // Skip picture or image descendants
-    if (el.querySelector('picture, img') || el.closest('picture')) return;
-    // If element is an anchor inside a paragraph, the paragraph itself will be appended
-    if (el.tagName === 'A' && el.parentElement?.tagName === 'P') return;
-    if (handled.has(el)) return;
-
-    handled.add(el);
-    contentWrapper.appendChild(el);
+  // Traverse the original block structure (rows and cells) and harvest all authored content
+  // preserving every heading, paragraph, list, link, and text node verbatim
+  const rows = [...block.children];
+  rows.forEach((row) => {
+    const cells = [...row.children];
+    cells.forEach((cell) => {
+      const nodes = [...cell.childNodes];
+      nodes.forEach((node) => {
+        if (node.nodeType === 1) { // ELEMENT_NODE
+          if (node.tagName === 'PICTURE' || node.tagName === 'IMG') return;
+          if (node.querySelector && node.querySelector('picture, img')) {
+            const innerPic = node.querySelector('picture, img');
+            if (innerPic) innerPic.remove();
+          }
+          if (node.textContent.trim() === '' && node.children.length === 0) return;
+          contentWrapper.appendChild(node);
+        } else if (node.nodeType === 3) { // TEXT_NODE
+          if (node.textContent.trim()) {
+            const p = document.createElement('p');
+            p.textContent = node.textContent.trim();
+            contentWrapper.appendChild(p);
+          }
+        }
+      });
+    });
   });
 
   // Style CTA button: find <p> containing an <a>
@@ -93,7 +105,7 @@ export default function decorate(block) {
 
   // Clean and rebuild block with exact two-child structure:
   // Child 0: hero-image (z-index 1 background)
-  // Child 1: hero-content (z-index 3 centered content)
+  // Child 1: hero-content (z-index 3 lower-left content)
   block.innerHTML = '';
   block.appendChild(imageWrapper);
   block.appendChild(contentWrapper);

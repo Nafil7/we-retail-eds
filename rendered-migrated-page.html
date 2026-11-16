@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="/blocks/teaser/teaser.css">
 </head>
 <body>
-  <header>
+  <header id="top">
     <div class="header"></div>
   </header>
   <main>
@@ -146,11 +146,15 @@
   </footer>
   <script type="module">
     import decorateHeader from '/blocks/header/header.js';
+    import decorateHero from '/blocks/hero/hero.js';
+    import decorateColumns from '/blocks/columns/columns.js';
     import decorateFooter from '/blocks/footer/footer.js';
     import decorateCarousel from '/blocks/carousel/carousel.js';
 
     const header = document.querySelector('header .header') || document.querySelector('header');
     if (header) decorateHeader(header);
+    document.querySelectorAll('.hero').forEach(decorateHero);
+    document.querySelectorAll('.columns').forEach(decorateColumns);
     const footer = document.querySelector('footer .footer') || document.querySelector('footer');
     if (footer) decorateFooter(footer);
     document.querySelectorAll('.carousel').forEach(decorateCarousel);
