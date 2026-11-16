@@ -1,109 +1,170 @@
 /* ==========================================================================
-   We.Retail Official Hero Banner
-   Clean, responsive 460px bounded layout.
-   Zero full-screen 99svh takeovers, zero distortion zoom.
+   We.Retail Official Hero Block Styles
+   Strict parity with AEM 6.5 .we-HeroImage
    ========================================================================== */
 
-.hero-container {
-  max-width: unset;
-  padding: 0;
+.hero-wrapper {
+  padding: 0 !important;
+  margin: 0 !important;
+  max-width: 100% !important;
 }
 
 .hero {
   position: relative;
-  width: 100%;
-  min-height: 440px;
-  max-height: 480px;
-  height: 460px;
+  min-height: 540px;
+  height: auto;
   overflow: hidden;
-  background-color: #111111;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 32px;
+  align-items: flex-end;
+  justify-content: flex-start;
+  background-color: #222;
+  color: #fff;
+  margin-bottom: 40px;
+  padding-top: 120px;
+  box-sizing: border-box;
 }
 
-.hero picture {
+/* Background Image Container */
+.hero > div:first-child,
+.hero .hero-image {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   z-index: 1;
 }
 
-.hero picture img,
-.hero img {
+.hero > div:first-child picture,
+.hero > div:first-child img,
+.hero .hero-image picture,
+.hero .hero-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 30%;
+  object-position: center;
   display: block;
 }
 
-.hero .hero-content,
-.hero > div:last-child {
-  position: relative;
+/* Authentic Gradient Contrast Overlay */
+.hero::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.2) 40%, rgba(0, 0, 0, 0.75) 100%);
   z-index: 2;
-  text-align: center;
-  color: #ffffff;
-  padding: 40px 20px;
+  pointer-events: none;
 }
 
-.hero h1,
-.hero h2 {
-  font-size: 56px;
-  font-weight: 900;
-  letter-spacing: 3px;
+/* Hero Content Wrapper — Lower-Left Alignment within 1224px Container */
+.hero > div:last-child,
+.hero .hero-content {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  max-width: 1224px;
+  padding: 0 32px 56px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+/* Subtitle placed above H1 in visual order */
+.hero .hero-content > p:first-of-type {
+  order: -1;
+  font-size: 22px;
+  font-weight: 300;
+  color: #fff;
+  margin: 0 0 8px;
+  text-transform: none;
+  text-shadow: 2px 4px 6px rgba(0, 0, 0, 0.6);
+  letter-spacing: 0.5px;
+}
+
+.hero h1 {
+  font-family: var(--heading-font-family, 'Montserrat', sans-serif);
+  font-size: 46px;
+  font-weight: 700;
   text-transform: uppercase;
-  color: #ffffff;
-  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.8);
-  margin: 0;
+  color: #fff;
+  margin: 0 0 20px;
+  line-height: 1.15;
+  text-shadow: 2px 4px 6px rgba(0, 0, 0, 0.6);
+  text-align: left;
+  max-width: 650px;
 }
 
 .hero p {
   font-size: 18px;
-  letter-spacing: 1px;
-  color: #ffffff;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
-  margin: 12px 0 0 0;
+  font-weight: 400;
+  color: #fff;
+  margin: 0 0 24px;
+  text-shadow: 2px 4px 6px rgba(0, 0, 0, 0.6);
+  text-align: left;
 }
 
-/* CTA button — rendered by hero.js from last <p><a> in content row */
-.hero .hero-content .button-wrapper {
-  margin-top: 20px;
-  text-shadow: none;
+.hero .button-wrapper {
+  margin: 8px 0 0;
+  text-align: left;
 }
 
-.hero .hero-content .button {
-  display: inline-block;
-  background-color: var(--primary-color, #d2001f);
-  color: #ffffff !important;
-  padding: 12px 28px;
-  font-size: 14px;
+.hero .button,
+.hero a.button {
+  background-color: #ed1c24;
+  color: #fff;
+  font-family: var(--heading-font-family, 'Montserrat', sans-serif);
+  font-size: 15px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 2px;
-  border-radius: 2px;
-  text-decoration: none !important;
+  letter-spacing: 1px;
+  padding: 10px 26px;
+  border: 1px solid #de1219;
+  border-radius: 0;
   text-shadow: none;
-  transition: background-color 0.2s ease;
+  display: inline-block;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  text-decoration: none;
 }
 
-.hero .hero-content .button:hover {
-  background-color: #a30018;
-  color: #ffffff !important;
+.hero .button:hover,
+.hero a.button:hover {
+  background-color: #c7151c;
+  border-color: #b01016;
+  text-decoration: none;
 }
 
-@media (max-width: 768px) {
+/* Tablet & Mobile responsive */
+@media (max-width: 767px) {
   .hero {
-    height: 340px;
-    min-height: 320px;
+    min-height: 380px;
+    padding-top: 100px;
   }
+
+  .hero .hero-content {
+    padding: 0 20px 32px;
+  }
+
   .hero h1 {
-    font-size: 36px;
+    font-size: 30px;
+    line-height: 1.2;
+    margin-bottom: 12px;
   }
-  .hero p {
-    font-size: 15px;
+
+  .hero .hero-content > p:first-of-type {
+    font-size: 16px;
+    margin-bottom: 6px;
+  }
+
+  .hero .button,
+  .hero a.button {
+    font-size: 13px;
+    padding: 8px 18px;
   }
 }
-

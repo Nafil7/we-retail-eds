@@ -1,137 +1,386 @@
-/**
- * Carousel block — We.Retail EDS
- *
- * Source: weretail/components/content/carousel with 3 teaser children.
- * Cloud JCR currently stores these as `cards` model (bug in last migration run).
- * This block handles the carousel model structure when re-migrated correctly.
- *
- * Raw HTML delivered per slide (carousel-item child):
- *   <div data-aue-model="carousel-item">
- *     <div>  ← image cell
- *       <picture><img src="..." alt="title"></picture>
- *     </div>
- *     <div>  ← content cell
- *       <h3>title</h3>
- *       <p>description</p>
- *       <p><a href="...">Explore →</a></p>
- *     </div>
- *   </div>
- *
- * Behavior:
- *  - One slide visible at a time (desktop: show slide with prev/next controls)
- *  - Dot indicators beneath
- *  - Keyboard: ArrowLeft / ArrowRight
- *  - No autoplay (source does not autoplay)
- *  - Idempotent: skip if .carousel-track already present
- */
-export default function decorate(block) {
-  if (block.querySelector('.carousel-track')) return; // idempotency
+let carouselCounter = 0;
 
-  const slides = [...block.children];
-  if (slides.length === 0) return;
+function findAssociatedHeading(block) {
+  if (block.hasAttribute('aria-labelledby')) {
+    const existingId = block.getAttribute('aria-labelledby');
+    if (document.getElementById(existingId)) return document.getElementById(existingId);
+  }
 
-  // Build track
-  const track = document.createElement('div');
-  track.className = 'carousel-track';
+  let prev = block.previousElementSibling;
+  while (prev) {
+    if (/^H[1-6]$/.test(prev.tagName)) return prev;
+    const h = prev.querySelector('h1, h2, h3, h4, h5, h6');
+    if (h) return h;
+    break;
+  }
 
-  slides.forEach((slide, i) => {
-    slide.classList.add('carousel-slide');
-    slide.setAttribute('role', 'group');
-    slide.setAttribute('aria-roledescription', 'slide');
-    slide.setAttribute('aria-label', `Slide ${i + 1} of ${slides.length}`);
-    if (i !== 0) slide.setAttribute('aria-hidden', 'true');
+  if (block.parentElement) {
+    const headings = [...block.parentElement.querySelectorAll('h1, h2, h3, h4, h5, h6')];
+    const prevHeadings = headings.filter(h => (h.compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING));
+    if (prevHeadings.length > 0) return prevHeadings[prevHeadings.length - 1];
+  }
+  return null;
+}
 
-    // Promote image and content semantics within each slide
-    const cells = [...slide.children];
-    if (cells[0]) cells[0].classList.add('carousel-slide-image');
-    if (cells[1]) cells[1].classList.add('carousel-slide-content');
-
-    // CTA button styling
-    const ctaP = [...(cells[1]?.querySelectorAll('p') || [])].find((p) => {
-      const a = p.querySelector('a');
-      return a && p.textContent.trim() === a.textContent.trim();
-    });
-    if (ctaP) {
-      ctaP.querySelector('a').classList.add('button', 'primary');
-      ctaP.classList.add('button-wrapper');
+function isFirstContentFocusable(panel) {
+  function findFirstMeaningful(node) {
+    for (const child of node.children) {
+      if (child.hasAttribute('hidden') || child.getAttribute('aria-hidden') === 'true') continue;
+      const tag = child.tagName.toUpperCase();
+      if (['DIV', 'SECTION', 'ARTICLE', 'PICTURE'].includes(tag)) {
+        const found = findFirstMeaningful(child);
+        if (found) return found;
+      } else {
+        return child;
+      }
     }
-
-    track.append(slide);
-  });
-
-  block.innerHTML = '';
-  block.append(track);
-
-  // Prev/Next controls
-  const prev = document.createElement('button');
-  prev.className = 'carousel-prev';
-  prev.setAttribute('aria-label', 'Previous slide');
-  prev.innerHTML = '&#10094;';
-
-  const next = document.createElement('button');
-  next.className = 'carousel-next';
-  next.setAttribute('aria-label', 'Next slide');
-  next.innerHTML = '&#10095;';
-
-  // Dots
-  const dots = document.createElement('div');
-  dots.className = 'carousel-dots';
-  dots.setAttribute('role', 'tablist');
-
-  const dotEls = slides.map((_, i) => {
-    const dot = document.createElement('button');
-    dot.className = 'carousel-dot';
-    dot.setAttribute('role', 'tab');
-    dot.setAttribute('aria-label', `Go to slide ${i + 1}`);
-    dot.setAttribute('aria-selected', i === 0 ? 'true' : 'false');
-    dots.append(dot);
-    return dot;
-  });
-
-  block.append(prev, next, dots);
-
-  let current = 0;
-
-  function goTo(index) {
-    const allSlides = [...track.children];
-    const n = allSlides.length;
-    if (n === 0) return;
-    const next_i = (index + n) % n;
-
-    allSlides[current].setAttribute('aria-hidden', 'true');
-    dotEls[current].setAttribute('aria-selected', 'false');
-    dotEls[current].classList.remove('active');
-
-    current = next_i;
-
-    allSlides[current].removeAttribute('aria-hidden');
-    dotEls[current].setAttribute('aria-selected', 'true');
-    dotEls[current].classList.add('active');
-
-    track.style.transform = `translateX(-${current * 100}%)`;
+    return null;
   }
 
-  // Set initial dot
-  if (dotEls[0]) {
-    dotEls[0].classList.add('active');
+  const first = findFirstMeaningful(panel);
+  if (!first) return false;
+
+  const isInteractive = (
+    (first.tagName === 'A' && first.hasAttribute('href')) ||
+    (['BUTTON', 'INPUT', 'SELECT', 'TEXTAREA'].includes(first.tagName) && !first.hasAttribute('disabled')) ||
+    (first.hasAttribute('tabindex') && parseInt(first.getAttribute('tabindex'), 10) >= 0)
+  );
+
+  return isInteractive;
+}
+
+function updateSlideFocusability(slide, isActive) {
+  if (!isActive) {
+    slide.removeAttribute('tabindex');
+    return;
   }
-
-  prev.addEventListener('click', () => goTo(current - 1));
-  next.addEventListener('click', () => goTo(current + 1));
-  dotEls.forEach((dot, i) => dot.addEventListener('click', () => goTo(i)));
-
-  // Keyboard navigation
-  block.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowLeft') goTo(current - 1);
-    if (e.key === 'ArrowRight') goTo(current + 1);
-  });
-  block.setAttribute('tabindex', '0');
-
-  // Handle zero/one slide gracefully
-  if (slides.length <= 1) {
-    prev.style.display = 'none';
-    next.style.display = 'none';
-    dots.style.display = 'none';
+  if (isFirstContentFocusable(slide)) {
+    slide.removeAttribute('tabindex');
+  } else {
+    slide.setAttribute('tabindex', '0');
   }
 }
 
+export default function decorate(block) {
+  const slides = [...block.children];
+  if (slides.length === 0) return;
+
+  const carouselId = ++carouselCounter;
+  if (!block.id) {
+    block.id = `carousel-${carouselId}`;
+  }
+
+  // Workstream A / Finding 1: Carousel Container Semantics & Visible Heading Association
+  block.setAttribute('role', 'region');
+  block.setAttribute('aria-roledescription', 'carousel');
+
+  const heading = findAssociatedHeading(block);
+  if (heading) {
+    if (!heading.id) {
+      heading.id = `carousel-heading-${carouselId}`;
+    }
+    block.setAttribute('aria-labelledby', heading.id);
+    block.removeAttribute('aria-label');
+  } else if (!block.hasAttribute('aria-label') && !block.hasAttribute('aria-labelledby')) {
+    const accessibleName = carouselId === 1 ? 'Featured Stories' : `Featured Stories ${carouselId}`;
+    block.setAttribute('aria-label', accessibleName);
+  }
+
+  // Workstream B & D / Finding 5: Slides container and live region
+  const slidesContainer = document.createElement('div');
+  slidesContainer.className = 'carousel-slides';
+  slidesContainer.setAttribute('aria-atomic', 'false');
+
+  const indicators = document.createElement('ol');
+  indicators.className = 'carousel-indicators';
+  indicators.setAttribute('role', 'tablist');
+  indicators.setAttribute('aria-label', 'Carousel slides');
+  indicators.setAttribute('aria-orientation', 'horizontal');
+
+  // Finding 4: Single-slide edge case (no orphaned tabpanel or tablist)
+  if (slides.length === 1) {
+    const slide = slides[0];
+    slide.id = `carousel-${carouselId}-slide-0`;
+    slide.className = 'carousel-slide active';
+    slide.setAttribute('aria-hidden', 'false');
+    slide.removeAttribute('inert');
+    slide.removeAttribute('role');
+
+    const cells = [...slide.children];
+    if (cells.length >= 2) {
+      const caption = document.createElement('div');
+      caption.className = 'carousel-caption';
+      while (cells[1].firstChild) {
+        caption.appendChild(cells[1].firstChild);
+      }
+      cells[1].replaceWith(caption);
+    }
+
+    updateSlideFocusability(slide, true);
+
+    slidesContainer.appendChild(slide);
+    slidesContainer.setAttribute('aria-live', 'polite');
+    block.innerHTML = '';
+    block.appendChild(slidesContainer);
+    return;
+  }
+
+  slides.forEach((slide, idx) => {
+    const slideId = `carousel-${carouselId}-slide-${idx}`;
+    const tabId = `carousel-${carouselId}-tab-${idx}`;
+
+    slide.id = slideId;
+    slide.className = 'carousel-slide';
+    slide.setAttribute('role', 'tabpanel');
+    slide.setAttribute('aria-labelledby', tabId);
+
+    // If slide has image + text cells, format as picture + caption
+    const cells = [...slide.children];
+    if (cells.length >= 2) {
+      const caption = document.createElement('div');
+      caption.className = 'carousel-caption';
+      while (cells[1].firstChild) {
+        caption.appendChild(cells[1].firstChild);
+      }
+      cells[1].replaceWith(caption);
+    }
+
+    // Determine accessible name for tab indicator from slide heading or fallback
+    const slideHeading = slide.querySelector('h1, h2, h3, h4, h5, h6');
+    const tabLabel = (slideHeading && slideHeading.textContent.trim()) ? slideHeading.textContent.trim() : `Slide ${idx + 1}`;
+
+    const indicator = document.createElement('button');
+    indicator.id = tabId;
+    indicator.type = 'button';
+    indicator.className = 'carousel-indicator';
+    indicator.setAttribute('role', 'tab');
+    indicator.setAttribute('aria-label', tabLabel);
+    indicator.setAttribute('aria-controls', slideId);
+
+    if (idx === 0) {
+      slide.classList.add('active');
+      slide.setAttribute('aria-hidden', 'false');
+      slide.removeAttribute('inert');
+      updateSlideFocusability(slide, true);
+
+      indicator.classList.add('active');
+      indicator.setAttribute('aria-selected', 'true');
+      indicator.setAttribute('tabindex', '0');
+    } else {
+      slide.classList.remove('active');
+      slide.setAttribute('aria-hidden', 'true');
+      slide.setAttribute('inert', '');
+      updateSlideFocusability(slide, false);
+
+      indicator.classList.remove('active');
+      indicator.setAttribute('aria-selected', 'false');
+      indicator.setAttribute('tabindex', '-1');
+    }
+
+    indicator.addEventListener('click', () => {
+      showSlide(idx);
+    });
+
+    slidesContainer.appendChild(slide);
+    indicators.appendChild(indicator);
+  });
+
+  // Navigation buttons
+  const prevBtn = document.createElement('button');
+  prevBtn.type = 'button';
+  prevBtn.className = 'carousel-btn prev';
+  prevBtn.innerHTML = '&#10094;';
+  prevBtn.setAttribute('aria-label', 'Previous slide');
+
+  const nextBtn = document.createElement('button');
+  nextBtn.type = 'button';
+  nextBtn.className = 'carousel-btn next';
+  nextBtn.innerHTML = '&#10095;';
+  nextBtn.setAttribute('aria-label', 'Next slide');
+
+  // Workstream C: Native visible autoplay control button
+  const autoplayBtn = document.createElement('button');
+  autoplayBtn.type = 'button';
+  autoplayBtn.className = 'carousel-autoplay-btn';
+  autoplayBtn.id = `carousel-${carouselId}-autoplay`;
+
+  let currentIdx = 0;
+  let timer = null;
+
+  // State management
+  let isPlaying = true;
+  let isHovered = false;
+  let isFocusStopped = false;
+
+  if (typeof window !== 'undefined' && window.matchMedia) {
+    const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (reducedMotionQuery.matches) {
+      isPlaying = false;
+    }
+  }
+
+  function updateAutoplayButton() {
+    const isRotating = isPlaying && !isFocusStopped;
+    const label = isRotating ? 'Stop slide rotation' : 'Start slide rotation';
+    autoplayBtn.setAttribute('aria-label', label);
+    autoplayBtn.setAttribute('title', label);
+    autoplayBtn.innerHTML = isRotating
+      ? '<span class="carousel-autoplay-icon" aria-hidden="true">&#10074;&#10074;</span>'
+      : '<span class="carousel-autoplay-icon" aria-hidden="true">&#9658;</span>';
+  }
+
+  function updateLiveRegion() {
+    const isRotating = isPlaying && !isFocusStopped && !isHovered;
+    slidesContainer.setAttribute('aria-live', isRotating ? 'off' : 'polite');
+  }
+
+  function startTimer() {
+    if (!timer && isPlaying && !isFocusStopped && !isHovered) {
+      timer = setInterval(() => {
+        showSlide(currentIdx + 1);
+      }, 5000);
+    }
+  }
+
+  function clearTimer() {
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+  }
+
+  function syncAutoplay() {
+    if (isPlaying && !isFocusStopped && !isHovered) {
+      startTimer();
+    } else {
+      clearTimer();
+    }
+    updateAutoplayButton();
+    updateLiveRegion();
+  }
+
+  function showSlide(newIdx) {
+    const prevSlide = slides[currentIdx];
+    prevSlide.classList.remove('active');
+    prevSlide.setAttribute('aria-hidden', 'true');
+    prevSlide.setAttribute('inert', '');
+    updateSlideFocusability(prevSlide, false);
+
+    indicators.children[currentIdx].classList.remove('active');
+    indicators.children[currentIdx].setAttribute('aria-selected', 'false');
+    indicators.children[currentIdx].setAttribute('tabindex', '-1');
+
+    currentIdx = (newIdx + slides.length) % slides.length;
+
+    const activeSlide = slides[currentIdx];
+    activeSlide.classList.add('active');
+    activeSlide.setAttribute('aria-hidden', 'false');
+    activeSlide.removeAttribute('inert');
+    updateSlideFocusability(activeSlide, true);
+
+    indicators.children[currentIdx].classList.add('active');
+    indicators.children[currentIdx].setAttribute('aria-selected', 'true');
+    indicators.children[currentIdx].setAttribute('tabindex', '0');
+  }
+
+  // Finding B: Robust pointer and keyboard modality tracking
+  let isPointerActive = false;
+
+  const setPointerActive = () => {
+    isPointerActive = true;
+  };
+
+  const clearPointerActive = () => {
+    isPointerActive = false;
+  };
+
+  block.addEventListener('pointerdown', setPointerActive);
+  block.addEventListener('mousedown', setPointerActive);
+  block.addEventListener('pointerup', clearPointerActive);
+  block.addEventListener('mouseup', clearPointerActive);
+  block.addEventListener('pointercancel', clearPointerActive);
+
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('pointerup', clearPointerActive);
+    window.addEventListener('mouseup', clearPointerActive);
+    window.addEventListener('pointercancel', clearPointerActive);
+    window.addEventListener('keydown', clearPointerActive);
+  }
+
+  // Autoplay button toggle
+  autoplayBtn.addEventListener('click', () => {
+    isPointerActive = false;
+    if (isPlaying && !isFocusStopped) {
+      isPlaying = false;
+      isFocusStopped = true;
+    } else {
+      isPlaying = true;
+      isFocusStopped = false;
+      isHovered = false;
+    }
+    syncAutoplay();
+  });
+
+  prevBtn.addEventListener('click', () => {
+    showSlide(currentIdx - 1);
+  });
+
+  nextBtn.addEventListener('click', () => {
+    showSlide(currentIdx + 1);
+  });
+
+  block.addEventListener('mouseenter', () => {
+    isHovered = true;
+    syncAutoplay();
+  });
+
+  block.addEventListener('mouseleave', () => {
+    isHovered = false;
+    syncAutoplay();
+  });
+
+  block.addEventListener('focusin', (e) => {
+    if (isPointerActive) {
+      return;
+    }
+
+    const focusFromOutside = !e.relatedTarget || !block.contains(e.relatedTarget);
+    if (focusFromOutside) {
+      if (isPlaying && !isFocusStopped) {
+        isFocusStopped = true;
+        syncAutoplay();
+      }
+    }
+  });
+
+  indicators.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      showSlide(currentIdx - 1);
+      indicators.children[currentIdx].focus();
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      showSlide(currentIdx + 1);
+      indicators.children[currentIdx].focus();
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      showSlide(0);
+      indicators.children[currentIdx].focus();
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      showSlide(slides.length - 1);
+      indicators.children[currentIdx].focus();
+    }
+  });
+
+  // Finding A: DOM assembly order (W3C APG Tabbed Carousel sequence)
+  // 1. Rotation control -> 2. Prev button -> 3. Next button -> 4. Tablist -> 5. Slide content
+  block.innerHTML = '';
+  block.appendChild(autoplayBtn);
+  block.appendChild(prevBtn);
+  block.appendChild(nextBtn);
+  block.appendChild(indicators);
+  block.appendChild(slidesContainer);
+
+  syncAutoplay();
+}

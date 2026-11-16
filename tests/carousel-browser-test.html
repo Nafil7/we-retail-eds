@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Carousel Behavioral, Timing & Accessibility Test Suite (Stage 7.4.2)</title>
+  <link rel="stylesheet" href="../styles/styles.css">
+  <link rel="stylesheet" href="../blocks/carousel/carousel.css">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      padding: 24px;
+      max-width: 980px;
+      margin: 0 auto;
+      background: #f8f9fa;
+      color: #212529;
+    }
+    #test-summary {
+      padding: 16px 20px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    #test-summary.pass {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    #test-summary.fail {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .test-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 28px;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .test-table th, .test-table td {
+      padding: 10px 14px;
+      border: 1px solid #dee2e6;
+      text-align: left;
+    }
+    .test-table th {
+      background: #e9ecef;
+      font-weight: 600;
+    }
+    .badge-pass {
+      background: #28a745;
+      color: #fff;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .badge-fail {
+      background: #dc3545;
+      color: #fff;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .carousel {
+      margin-top: 24px;
+      border: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+  <h1>Carousel Behavioral, Timing & Accessibility Test Suite (Stage 7.4.2)</h1>
+  <div id="test-summary">Running tests...</div>
+  <table class="test-table">
+    <thead>
+      <tr>
+        <th style="width: 50px;">#</th>
+        <th>Test Description</th>
+        <th style="width: 80px;">Result</th>
+        <th>Virtual Time / Details</th>
+      </tr>
+    </thead>
+    <tbody id="test-rows"></tbody>
+  </table>
+
+  <h2>Test Sandbox Fixture 1 (Standard 3-Slide Carousel with Heading)</h2>
+  <div><h2 id="carousel-test-heading">Discover the Finest Gear</h2></div>
+  <div class="carousel" id="carousel-test">
+    <div>
+      <div><picture><img src="/img1.jpg" alt="Slide 1"></picture></div>
+      <div><h3>Slide 1 Heading</h3><p>Description 1</p><p><a href="#link1">Shop 1</a></p></div>
+    </div>
+    <div>
+      <div><picture><img src="/img2.jpg" alt="Slide 2"></picture></div>
+      <div><h3>Slide 2 Heading</h3><p>Description 2</p><p><a href="#link2">Shop 2</a></p></div>
+    </div>
+    <div>
+      <div><picture><img src="/img3.jpg" alt="Slide 3"></picture></div>
+      <div><h3>Slide 3 Heading</h3><p>Description 3</p><p><a href="#link3">Shop 3</a></p></div>
+    </div>
+  </div>
+
+  <h2>Test Sandbox Fixture 2 (Multiple Carousel Instance Isolation with Heading)</h2>
+  <div><h2 id="carousel-test-heading-2">Another Featured Section</h2></div>
+  <div class="carousel" id="carousel-test-2" style="display: none;">
+    <div>
+      <div><picture><img src="/img4.jpg" alt="Slide 4"></picture></div>
+      <div><h3>Slide 4 Heading</h3><p>Description 4</p></div>
+    </div>
+    <div>
+      <div><picture><img src="/img5.jpg" alt="Slide 5"></picture></div>
+      <div><h3>Slide 5 Heading</h3><p>Description 5</p></div>
+    </div>
+  </div>
+
+  <h2>Test Sandbox Fixture 3 (Single Slide Degradation)</h2>
+  <div class="carousel" id="carousel-test-single" style="display: none;">
+    <div>
+      <div><picture><img src="/img-single.jpg" alt="Single"></picture></div>
+      <div><h3>Only One Slide</h3><p>Single slide description</p></div>
+    </div>
+  </div>
+
+  <div id="external-focus-target" tabindex="0" style="margin-top: 16px; padding: 8px; background: #eee;">
+    External Focus Target (Outside Carousel)
+  </div>
+
+  <script type="module">
+    // Deterministic Virtual Clock with Separated Active & Historical Collections
+    class VirtualClock {
+      constructor() {
+        this.now = 0;
+        this.nextTimerId = 1;
+        this.activeTimers = new Map();
+        this.history = new Map();
+      }
+
+      setInterval(fn, ms) {
+        const id = this.nextTimerId++;
+        const duration = Number(ms) || 0;
+        const record = {
+          id,
+          rawFn: fn,
+          ms: duration,
+          createdAt: this.now,
+          nextRun: this.now + duration,
+          cancelled: false,
+          cancelledAt: null,
+          executionCount: 0,
+          fn: () => {
+            record.executionCount++;
+            fn();
+          }
+        };
+        this.activeTimers.set(id, record);
+        this.history.set(id, record);
+        return id;
+      }
+
+      clearInterval(id) {
+        const timer = this.history.get(id);
+        if (timer) {
+          timer.cancelled = true;
+          timer.cancelledAt = this.now;
+          this.activeTimers.delete(id);
+        }
+      }
+
+      advance(ms) {
+        const delta = Number(ms) || 0;
+        if (delta <= 0) return;
+        const targetTime = this.now + delta;
+
+        while (true) {
+          let earliest = null;
+          for (const timer of this.activeTimers.values()) {
+            if (!timer.cancelled && timer.nextRun <= targetTime) {
+              if (!earliest || timer.nextRun < earliest.nextRun || (timer.nextRun === earliest.nextRun && timer.id < earliest.id)) {
+                earliest = timer;
+              }
+            }
+          }
+
+          if (!earliest) {
+            break;
+          }
+
+          this.now = earliest.nextRun;
+          earliest.nextRun = this.now + earliest.ms;
+
+          if (!earliest.cancelled) {
+            earliest.fn();
+          }
+        }
+
+        this.now = targetTime;
+      }
+
+      getActiveTimers() {
+        return Array.from(this.activeTimers.values()).filter(t => !t.cancelled);
+      }
+
+      get activeTimerCount() {
+        return this.getActiveTimers().length;
+      }
+
+      getHistoricalTimers() {
+        return Array.from(this.history.values());
+      }
+
+      getCancelledTimers() {
+        return Array.from(this.history.values()).filter(t => t.cancelled);
+      }
+
+      getTimer(id) {
+        return this.history.get(id) || null;
+      }
+    }
+
+    // Install virtual clock before importing or running carousel decorator
+    const clock = new VirtualClock();
+    window.__carouselClock = clock;
+    window.setInterval = clock.setInterval.bind(clock);
+    window.clearInterval = clock.clearInterval.bind(clock);
+    window.advanceTimers = (ms) => clock.advance(ms);
+
+    import decorate from '../blocks/carousel/carousel.js';
+
+    const block = document.getElementById('carousel-test');
+    decorate(block);
+
+    const log = [];
+    let testIndex = 0;
+    const testRows = document.getElementById('test-rows');
+    const testSummary = document.getElementById('test-summary');
+
+    function assert(desc, condition, details = '') {
+      testIndex++;
+      const pass = !!condition;
+      const timeInfo = `T=${clock.now}ms${details ? ' | ' + details : ''}`;
+      log.push({ index: testIndex, desc, pass, timeInfo });
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${testIndex}</td>
+        <td>${desc}</td>
+        <td><span class="${pass ? 'badge-pass' : 'badge-fail'}">${pass ? 'PASS' : 'FAIL'}</span></td>
+        <td>${timeInfo}</td>
+      `;
+      testRows.appendChild(tr);
+
+      if (!pass) {
+        console.error(`Assertion ${testIndex} FAILED: ${desc}`, timeInfo);
+      }
+    }
+
+    // Finding A: DOM order verification (W3C APG Tabbed Carousel sequence):
+    // Child 0: autoplayBtn
+    // Child 1: prevBtn
+    // Child 2: nextBtn
+    // Child 3: indicatorsContainer
+    // Child 4: slidesContainer
+    const autoplayBtn = block.children[0];
+    const prevBtn = block.children[1];
+    const nextBtn = block.children[2];
+    const indicatorsContainer = block.children[3];
+    const slidesContainer = block.children[4];
+
+    const slides = slidesContainer.querySelectorAll('.carousel-slide');
+    const indicators = indicatorsContainer.querySelectorAll('.carousel-indicator');
+    const outsideTarget = document.getElementById('external-focus-target');
+
+    // Section 1: Finding 1 — Container Semantics & Visible Heading Association
+    assert('1. Container has role=region', block.getAttribute('role') === 'region');
+    assert('2. Container has aria-roledescription="carousel"', block.getAttribute('aria-roledescription') === 'carousel');
+    assert('3. Container references visible heading via aria-labelledby', block.getAttribute('aria-labelledby') === 'carousel-test-heading');
+    assert('4. Container does not have hardcoded aria-label when heading exists', !block.hasAttribute('aria-label'));
+    assert('5. Container has unique ID', block.id && block.id.length > 0);
+
+    // Section 2: Finding A — DOM Order / Tab Sequence (Controls & Tablist Precede Slide Content)
+    assert('6. Autoplay button is child 0 in DOM order', block.children[0] === autoplayBtn);
+    assert('7. Previous button is child 1 in DOM order', block.children[1] === prevBtn);
+    assert('8. Next button is child 2 in DOM order', block.children[2] === nextBtn);
+    assert('9. Indicators tablist is child 3 in DOM order', block.children[3] === indicatorsContainer);
+    assert('10. Slides container is child 4 in DOM order', block.children[4] === slidesContainer);
+
+    // Section 3: Workstream C — Autoplay Control Button
+    assert('11. Autoplay button is native BUTTON tag', autoplayBtn.tagName === 'BUTTON');
+    assert('12. Autoplay button has type="button"', autoplayBtn.type === 'button');
+    assert('13. Autoplay button initial accessible name is "Stop slide rotation"', autoplayBtn.getAttribute('aria-label') === 'Stop slide rotation');
+
+    // Section 4: Workstream B & D / Finding 5 — Tabbed Carousel Semantics & Live Region Atomicity
+    assert('14. Exactly 3 slides created', slides.length === 3);
+    assert('15. Slide 0 active initially', slides[0].classList.contains('active'));
+    assert('16. Slide 0 aria-hidden is false', slides[0].getAttribute('aria-hidden') === 'false');
+    assert('17. Slide 1 aria-hidden is true', slides[1].getAttribute('aria-hidden') === 'true');
+    assert('18. Slide 2 aria-hidden is true', slides[2].getAttribute('aria-hidden') === 'true');
+    assert('19. Exactly 3 indicators created', indicators.length === 3);
+    assert('20. Indicators container has role=tablist', indicatorsContainer.getAttribute('role') === 'tablist');
+    assert('21. Tablist has accessible name (aria-label="Carousel slides")', indicatorsContainer.getAttribute('aria-label') === 'Carousel slides');
+    assert('22. Tablist has horizontal orientation (aria-orientation="horizontal")', indicatorsContainer.getAttribute('aria-orientation') === 'horizontal');
+    assert('23. Slides container has aria-atomic="false" per W3C APG', slidesContainer.getAttribute('aria-atomic') === 'false');
+    assert('24. Slides container has aria-live="off" while rotating', slidesContainer.getAttribute('aria-live') === 'off');
+
+    // Section 5: Finding 3 — Tabpanel Focusability Evaluation
+    assert('25. Active Slide 0 has tabindex="0" because first content (image) is non-focusable', slides[0].getAttribute('tabindex') === '0');
+    assert('26. Inactive Slide 1 does not have tabindex', !slides[1].hasAttribute('tabindex'));
+    assert('27. Inactive Slide 2 does not have tabindex', !slides[2].hasAttribute('tabindex'));
+
+    // Bi-directional relationships and roving tabindex
+    for (let i = 0; i < 3; i++) {
+      const slide = slides[i];
+      const tab = indicators[i];
+      assert(`28.${i+1} Slide ${i} has unique ID`, slide.id && slide.id.length > 0);
+      assert(`28.${i+2} Tab ${i} has unique ID`, tab.id && tab.id.length > 0);
+      assert(`28.${i+3} Tab ${i} has role=tab`, tab.getAttribute('role') === 'tab');
+      assert(`28.${i+4} Tab ${i} aria-controls matches Slide ${i} ID`, tab.getAttribute('aria-controls') === slide.id);
+      assert(`28.${i+5} Slide ${i} has role=tabpanel`, slide.getAttribute('role') === 'tabpanel');
+      assert(`28.${i+6} Slide ${i} aria-labelledby matches Tab ${i} ID`, slide.getAttribute('aria-labelledby') === tab.id);
+      assert(`28.${i+7} Slide ${i} does NOT have aria-roledescription="slide"`, slide.getAttribute('aria-roledescription') === null);
+      assert(`28.${i+8} Tab ${i} accessible name derived from heading`, tab.getAttribute('aria-label') === `Slide ${i + 1} Heading`);
+
+      if (i === 0) {
+        assert(`28.${i+9} Tab 0 is selected (aria-selected="true")`, tab.getAttribute('aria-selected') === 'true');
+        assert(`28.${i+10} Tab 0 has roving tabindex="0"`, tab.getAttribute('tabindex') === '0');
+        assert(`28.${i+11} Slide 0 is not inert`, !slide.hasAttribute('inert'));
+      } else {
+        assert(`28.${i+9} Tab ${i} is unselected (aria-selected="false")`, tab.getAttribute('aria-selected') === 'false');
+        assert(`28.${i+10} Tab ${i} has roving tabindex="-1"`, tab.getAttribute('tabindex') === '-1');
+        assert(`28.${i+11} Inactive slide ${i} has inert attribute`, slide.hasAttribute('inert'));
+      }
+    }
+
+    // Section 6: Initial Autoplay Timing (5000ms Interval)
+    const initialTimers = clock.getActiveTimers();
+    assert('29. Autoplay timer initialized', initialTimers.length === 1);
+    assert('30. Exactly one autoplay timer active (no duplicates)', clock.activeTimerCount === 1);
+    const initialTimer = initialTimers[0];
+    assert('31. Autoplay timer configured with exactly 5000ms interval', initialTimer && initialTimer.ms === 5000);
+    assert('32. Next execution scheduled at virtual T=5000ms', initialTimer && initialTimer.nextRun === 5000);
+
+    const baseTime = clock.now;
+    clock.advance(4999);
+    assert('33. Advancing 4999ms does not change active slide', slides[0].classList.contains('active'), `Elapsed: ${clock.now - baseTime}ms`);
+    assert('34. Initial timer execution count remains 0 at 4999ms', initialTimer.executionCount === 0);
+
+    clock.advance(1);
+    assert('35. Advancing another 1ms (total 5000ms) advances to Slide 1', slides[1].classList.contains('active'), `Elapsed: ${clock.now - baseTime}ms`);
+    assert('36. Initial timer execution count increments to 1 at 5000ms', initialTimer.executionCount === 1);
+    assert('37. Autoplay updates roving tabindex to Tab 1 (tabindex="0")', indicators[1].getAttribute('tabindex') === '0');
+    assert('38. Tab 0 reverted to tabindex="-1"', indicators[0].getAttribute('tabindex') === '-1');
+    assert('39. Slide 1 receives tabindex="0" on becoming active', slides[1].getAttribute('tabindex') === '0');
+    assert('40. Slide 0 loses tabindex on becoming inactive', !slides[0].hasAttribute('tabindex'));
+
+    clock.advance(5000);
+    assert('41. Advancing another 5000ms (total 10000ms) advances to Slide 2', slides[2].classList.contains('active'), `Elapsed: ${clock.now - baseTime}ms`);
+    assert('42. Initial timer execution count increments to 2 at 10000ms', initialTimer.executionCount === 2);
+    assert('43. Autoplay updates roving tabindex to Tab 2 (tabindex="0")', indicators[2].getAttribute('tabindex') === '0');
+    assert('44. Slide 2 receives tabindex="0" on becoming active', slides[2].getAttribute('tabindex') === '0');
+
+    // Section 7: Pointer Hover Pause & Resume
+    const countBeforeHover = initialTimer.executionCount; // 2
+    block.dispatchEvent(new MouseEvent('mouseenter'));
+    assert('45. Autoplay timer paused on pointer hover (mouseenter)', initialTimer.cancelled === true);
+    assert('46. Initial timer removed from active collection', clock.activeTimerCount === 0);
+
+    clock.advance(20000);
+    assert('47. Advancing 20,000ms does not execute cancelled timer 1 callback', initialTimer.executionCount === countBeforeHover);
+    assert('48. Slide remains static while hovered', slides[2].classList.contains('active'));
+
+    block.dispatchEvent(new MouseEvent('mouseleave'));
+    assert('49. Autoplay timer resumes after mouseleave', clock.activeTimerCount === 1);
+    const resumeTimer = clock.getActiveTimers()[0];
+    assert('50. Resumed timer is a distinct newly created timer instance', resumeTimer.id !== initialTimer.id);
+    assert('51. Resumed timer configured with 5000ms duration', resumeTimer && resumeTimer.ms === 5000);
+
+    clock.advance(5000);
+    assert('52. Resumed timer advances slide to 0 at 5000ms', slides[0].classList.contains('active'));
+
+    // Section 8: Finding 6 — Mouse Interaction Modality (Stop & Start without Focusin Reversal)
+    // Simulate mouse click on Stop: pointerdown sets modality, focus does NOT prematurely flip state
+    block.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    autoplayBtn.focus();
+    assert('53. Pointer focus does not prematurely change button label before click', autoplayBtn.getAttribute('aria-label') === 'Stop slide rotation');
+    autoplayBtn.click();
+    assert('54. Mouse click on Stop successfully stops rotation', clock.activeTimerCount === 0);
+    assert('55. Button accessible name updates to "Start slide rotation"', autoplayBtn.getAttribute('aria-label') === 'Start slide rotation');
+    assert('56. Live region switches to "polite"', slidesContainer.getAttribute('aria-live') === 'polite');
+
+    // Pointer leave after explicit stop must NOT resume rotation
+    block.dispatchEvent(new MouseEvent('mouseenter'));
+    block.dispatchEvent(new MouseEvent('mouseleave'));
+    assert('57. Pointer leave does not override explicit Stop', clock.activeTimerCount === 0);
+
+    // Mouse click on Start: explicitly restarts rotation
+    block.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    autoplayBtn.focus();
+    autoplayBtn.click();
+    assert('58. Mouse click on Start successfully restarts rotation', clock.activeTimerCount === 1);
+    assert('59. Button accessible name updates to "Stop slide rotation"', autoplayBtn.getAttribute('aria-label') === 'Stop slide rotation');
+    assert('60. Live region switches to "off"', slidesContainer.getAttribute('aria-live') === 'off');
+
+    // Section 9: Pure Keyboard Focus Stops Rotation Permanently
+    // Blur to outside target
+    outsideTarget.focus();
+    assert('61. Still rotating while focus is outside', clock.activeTimerCount === 1);
+
+    // Keyboard focus enters (no pointerdown)
+    autoplayBtn.focus();
+    autoplayBtn.dispatchEvent(new FocusEvent('focusin', { bubbles: true, relatedTarget: outsideTarget }));
+    assert('62. Keyboard focus entry permanently stops rotation', clock.activeTimerCount === 0);
+    assert('63. Button updates to "Start slide rotation" on keyboard focus', autoplayBtn.getAttribute('aria-label') === 'Start slide rotation');
+    assert('64. Live region switches to "polite" on keyboard stop', slidesContainer.getAttribute('aria-live') === 'polite');
+
+    // Blur outside does NOT resume rotation
+    outsideTarget.focus();
+    block.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: outsideTarget }));
+    assert('65. Focus leaving carousel does NOT restart automatic rotation', clock.activeTimerCount === 0);
+    clock.advance(20000);
+    assert('66. Slide remains static while focus-stopped across 20,000ms', slides[0].classList.contains('active'));
+
+    // Section 10: Keyboard Navigation on Indicators (ArrowLeft, ArrowRight, Home, End)
+    indicators[0].click();
+    indicators[0].focus();
+    assert('67. Keyboard focus reaches indicator 0', document.activeElement === indicators[0]);
+
+    const rightEvent = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true });
+    indicators[0].dispatchEvent(rightEvent);
+    assert('68. ArrowRight advances to Slide 1', slides[1].classList.contains('active'));
+    assert('69. Indicator 1 selected (aria-selected=true)', indicators[1].getAttribute('aria-selected') === 'true');
+    assert('70. Roving tabindex moved to Tab 1', indicators[1].getAttribute('tabindex') === '0');
+    assert('71. Indicator 1 receives keyboard focus', document.activeElement === indicators[1]);
+    assert('72. Active Slide 1 has tabindex="0"', slides[1].getAttribute('tabindex') === '0');
+
+    const leftEvent = new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true });
+    indicators[1].dispatchEvent(leftEvent);
+    assert('73. ArrowLeft returns to Slide 0', slides[0].classList.contains('active'));
+    assert('74. Indicator 0 selected (aria-selected=true)', indicators[0].getAttribute('aria-selected') === 'true');
+    assert('75. Roving tabindex moved to Tab 0', indicators[0].getAttribute('tabindex') === '0');
+    assert('76. Indicator 0 receives keyboard focus', document.activeElement === indicators[0]);
+
+    const endEvent = new KeyboardEvent('keydown', { key: 'End', bubbles: true, cancelable: true });
+    indicators[0].dispatchEvent(endEvent);
+    assert('77. End key jumps to Slide 2', slides[2].classList.contains('active'));
+    assert('78. Indicator 2 selected after End', indicators[2].getAttribute('aria-selected') === 'true');
+    assert('79. Roving tabindex moved to Tab 2 after End', indicators[2].getAttribute('tabindex') === '0');
+    assert('80. Indicator 2 receives keyboard focus after End', document.activeElement === indicators[2]);
+
+    const homeEvent = new KeyboardEvent('keydown', { key: 'Home', bubbles: true, cancelable: true });
+    indicators[2].dispatchEvent(homeEvent);
+    assert('81. Home key jumps to Slide 0', slides[0].classList.contains('active'));
+    assert('82. Indicator 0 selected after Home', indicators[0].getAttribute('aria-selected') === 'true');
+    assert('83. Roving tabindex moved to Tab 0 after Home', indicators[0].getAttribute('tabindex') === '0');
+    assert('84. Indicator 0 receives keyboard focus after Home', document.activeElement === indicators[0]);
+
+    // Section 11: Multi-Carousel Instance Isolation (Finding 1 & 6)
+    const block2 = document.getElementById('carousel-test-2');
+    decorate(block2);
+    assert('85. Carousel instance 2 references its own heading', block2.getAttribute('aria-labelledby') === 'carousel-test-heading-2');
+    const block2Slides = block2.querySelectorAll('.carousel-slide');
+    const block2Indicators = block2.querySelectorAll('.carousel-indicator');
+    assert('86. Carousel instance 2 created successfully', block2Slides.length === 2);
+    const idsInstance1 = [...Array.from(slides).map(s => s.id), ...Array.from(indicators).map(t => t.id)];
+    const idsInstance2 = [...Array.from(block2Slides).map(s => s.id), ...Array.from(block2Indicators).map(t => t.id)];
+    const hasCollision = idsInstance1.some(id => idsInstance2.includes(id));
+    assert('87. Zero ID collisions between multiple carousel instances', !hasCollision);
+    // Pause block 2
+    block2.dispatchEvent(new MouseEvent('mouseenter'));
+
+    // Section 12: Finding 4 — Single-Slide Degradation (No Orphaned Tabpanels)
+    const singleBlock = document.getElementById('carousel-test-single');
+    decorate(singleBlock);
+    const singleSlides = singleBlock.querySelectorAll('.carousel-slide');
+    assert('88. Single slide carousel has 1 slide', singleSlides.length === 1);
+    assert('89. Single slide does NOT have role="tabpanel" (no orphaned tabpanel)', singleSlides[0].getAttribute('role') === null);
+    assert('90. Single slide does NOT have aria-labelledby referencing non-existent tab', !singleSlides[0].hasAttribute('aria-labelledby'));
+    assert('91. Single slide has no autoplay button', singleBlock.querySelector('.carousel-autoplay-btn') === null);
+    assert('92. Single slide has no indicators tablist', singleBlock.querySelector('.carousel-indicators') === null);
+    assert('93. Single slide has no prev/next buttons', singleBlock.querySelector('.carousel-btn') === null);
+
+    // Section 13: Inactive Slide Focus Isolation
+    assert('94. Inactive slide 1 has inert attribute', slides[1].hasAttribute('inert'));
+    assert('95. Inactive slide 1 has aria-hidden="true"', slides[1].getAttribute('aria-hidden') === 'true');
+    assert('96. Inactive slide 2 has inert attribute', slides[2].hasAttribute('inert'));
+    assert('97. Inactive slide 2 has aria-hidden="true"', slides[2].getAttribute('aria-hidden') === 'true');
+
+    // Final summary
+    const failures = log.filter(item => !item.pass);
+    const allPassed = failures.length === 0;
+
+    if (allPassed) {
+      testSummary.className = 'pass';
+      testSummary.textContent = `ALL ${log.length} ASSERTIONS PASSED SUCCESSFULLY`;
+    } else {
+      testSummary.className = 'fail';
+      testSummary.textContent = `FAILED: ${failures.length} of ${log.length} assertions failed!`;
+    }
+
+    window.__CAROUSEL_TEST_RESULTS = {
+      passed: log.length - failures.length,
+      failed: failures.length,
+      total: log.length,
+      allPassed,
+      log
+    };
+    window.__CAROUSEL_TESTS_DONE = true;
+  </script>
+</body>
+</html>
