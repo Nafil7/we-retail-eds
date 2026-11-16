@@ -22,29 +22,55 @@
  * First divergence proven: hero.js was destroying the second <div> by recreating
  * only an <h1> from textContent, losing the <p> eyebrow and the CTA <a>.
  */
+/**
+ * Hero block decorator — We.Retail EDS
+ *
+ * Handles all migrated hero block markup shapes:
+ *   - 1 row with multiple cells (image, heading, subtitle, CTA)
+ *   - Multiple rows (one cell each)
+ *   - 2 rows (image row + content row)
+ *
+ * Guarantees:
+ *   1. Background picture placed in .hero-image layer (absolute, z-index: 1).
+ *   2. Contrast overlay (.hero::after, z-index: 2).
+ *   3. Heading, subtitle, and CTA grouped into a unified .hero-content container (z-index: 3).
+ *   4. Styled .button link for primary action.
+ *   5. Idempotent against repeated execution.
+ */
 export default function decorate(block) {
   // Idempotency guard — skip if already decorated
-  if (block.querySelector('.hero-content')) return;
+  if (block.classList.contains('hero-decorated') || block.querySelector('.hero-content')) return;
 
-  // Row 0 → picture/image; Row 1 → richtext content (h1 + p + CTA p)
-  const rows = [...block.children];
-  const imgRow = rows[0];
-  const contentRow = rows[1];
-
-  if (!imgRow || !contentRow) return;
-
-  // Extract the picture element from row 0
-  const pic = imgRow.querySelector('picture') || imgRow.querySelector('img');
+  // Extract the picture element from anywhere within the block
+  const pic = block.querySelector('picture') || block.querySelector('img');
+  const imageWrapper = document.createElement('div');
+  imageWrapper.className = 'hero-image';
   if (pic) {
-    // Move picture to be first child of block (absolute cover layer via CSS)
-    block.prepend(pic.closest('picture') || pic);
+    imageWrapper.appendChild(pic.closest('picture') || pic);
   }
 
-  // Promote the content row to .hero-content
-  contentRow.classList.add('hero-content');
+  // Create unified content wrapper for all non-picture elements
+  const contentWrapper = document.createElement('div');
+  contentWrapper.className = 'hero-content';
 
-  // Find the last <p> that contains only an <a> → make it a CTA button
-  const paras = [...contentRow.querySelectorAll('p')];
+  // Collect all headings, paragraphs, and standalone links across rows/cells
+  // preserving authored content and links verbatim
+  const elementsToCollect = [...block.querySelectorAll('h1, h2, h3, h4, h5, h6, p, a')];
+  const handled = new Set();
+
+  elementsToCollect.forEach((el) => {
+    // Skip picture or image descendants
+    if (el.querySelector('picture, img') || el.closest('picture')) return;
+    // If element is an anchor inside a paragraph, the paragraph itself will be appended
+    if (el.tagName === 'A' && el.parentElement?.tagName === 'P') return;
+    if (handled.has(el)) return;
+
+    handled.add(el);
+    contentWrapper.appendChild(el);
+  });
+
+  // Style CTA button: find <p> containing an <a>
+  const paras = [...contentWrapper.querySelectorAll('p')];
   paras.forEach((p) => {
     const anchors = [...p.querySelectorAll('a')];
     if (anchors.length === 1 && p.textContent.trim() === anchors[0].textContent.trim()) {
@@ -53,11 +79,23 @@ export default function decorate(block) {
     }
   });
 
-  // Remove the now-empty image row (picture already moved above)
-  if (imgRow !== pic?.closest('picture')) {
-    imgRow.remove();
-  } else {
-    // imgRow contains non-picture content — just remove if empty
-    if (!imgRow.children.length) imgRow.remove();
-  }
+  // If there are standalone anchors in contentWrapper without button styling
+  const standaloneAnchors = [...contentWrapper.querySelectorAll('a:not(.button)')];
+  standaloneAnchors.forEach((a) => {
+    if (!a.closest('p')) {
+      a.classList.add('button', 'primary');
+      const wrapper = document.createElement('p');
+      wrapper.className = 'button-wrapper';
+      a.replaceWith(wrapper);
+      wrapper.appendChild(a);
+    }
+  });
+
+  // Clean and rebuild block with exact two-child structure:
+  // Child 0: hero-image (z-index 1 background)
+  // Child 1: hero-content (z-index 3 centered content)
+  block.innerHTML = '';
+  block.appendChild(imageWrapper);
+  block.appendChild(contentWrapper);
+  block.classList.add('hero-decorated');
 }

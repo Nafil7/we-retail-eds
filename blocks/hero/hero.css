@@ -23,7 +23,8 @@
 }
 
 /* Background Image Container */
-.hero > div:first-child {
+.hero > div:first-child,
+.hero .hero-image {
   position: absolute;
   top: 0;
   left: 0;
@@ -33,7 +34,9 @@
 }
 
 .hero > div:first-child picture,
-.hero > div:first-child img {
+.hero > div:first-child img,
+.hero .hero-image picture,
+.hero .hero-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -55,7 +58,8 @@
 }
 
 /* Hero Content Wrapper */
-.hero > div:last-child {
+.hero > div:last-child,
+.hero .hero-content {
   position: relative;
   z-index: 3;
   width: 100%;

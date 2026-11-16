@@ -39,6 +39,29 @@ header {
   user-select: none;
 }
 
+.we-lang-btn {
+  background: none;
+  border: none;
+  color: #ccc;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.we-lang-btn:hover,
+.we-lang-btn:focus-visible {
+  color: #fff;
+  outline: 1px dotted #fff;
+}
+
+.we-lang-arrow {
+  font-size: 10px;
+}
+
 .we-lang-dropdown {
   display: none;
   position: absolute;
@@ -163,16 +186,29 @@ header {
   margin: 0;
   display: flex;
   align-items: center;
+  position: relative;
 }
 
 .we-search-input {
-  border: 1px solid #ccc;
-  padding: 6px 12px;
+  border: 1px solid transparent;
+  padding: 6px 0;
   font-size: 13px;
   border-radius: 0;
   outline: none;
-  width: 140px;
-  transition: width 0.3s ease;
+  width: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: width 0.3s ease, padding 0.3s ease, opacity 0.3s ease, border-color 0.3s ease;
+}
+
+.we-search-form.active .we-search-input,
+.we-search-input.active,
+.we-search-input:focus {
+  width: 160px;
+  opacity: 1;
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  pointer-events: auto;
 }
 
 .we-search-input:focus {
@@ -184,7 +220,17 @@ header {
   border: none;
   cursor: pointer;
   font-size: 16px;
-  padding: 4px;
+  padding: 6px 8px;
+  color: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.we-search-btn:hover,
+.we-search-btn:focus-visible {
+  color: #eb1c24;
 }
 
 @media (max-width: 991px) {

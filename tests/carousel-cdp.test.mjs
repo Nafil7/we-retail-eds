@@ -1,4 +1,5 @@
 import http from 'http';
+import net from 'net';
 import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
@@ -7,7 +8,56 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const edsRoot = path.resolve(__dirname, '..');
-const chromeExe = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+
+function findChromeExecutable() {
+  if (process.env.CHROME_PATH && fs.existsSync(process.env.CHROME_PATH)) {
+    return process.env.CHROME_PATH;
+  }
+  if (process.env.CHROME_BIN && fs.existsSync(process.env.CHROME_BIN)) {
+    return process.env.CHROME_BIN;
+  }
+
+  const candidates = [];
+  if (process.platform === 'win32') {
+    candidates.push(
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      path.join(process.env.LOCALAPPDATA || '', 'Google', 'Chrome', 'Application', 'chrome.exe'),
+      'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'
+    );
+  } else if (process.platform === 'darwin') {
+    candidates.push(
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      '/Applications/Chromium.app/Contents/MacOS/Chromium'
+    );
+  } else {
+    candidates.push(
+      '/usr/bin/google-chrome',
+      '/usr/bin/google-chrome-stable',
+      '/usr/bin/chromium',
+      '/usr/bin/chromium-browser'
+    );
+  }
+
+  for (const candidate of candidates) {
+    if (candidate && fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  throw new Error('Could not find Chrome/Chromium executable. Please set CHROME_PATH environment variable.');
+}
+
+function getFreePort() {
+  return new Promise((resolve, reject) => {
+    const srv = net.createServer();
+    srv.listen(0, '127.0.0.1', () => {
+      const port = srv.address().port;
+      srv.close(() => resolve(port));
+    });
+    srv.on('error', reject);
+  });
+}
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -149,51 +199,65 @@ class CDPClient {
 }
 
 async function run() {
-  console.log('--- Starting Stage 7.4.2 Real Browser CDP Conformance & APG Verification ---');
-  const server = await startServer(8996);
-  console.log('HTTP Server listening on http://127.0.0.1:8996');
+  console.log('--- Starting Stage 8 Real Browser CDP Conformance & APG Verification ---');
+  let server = null;
+  let chromeProc = null;
+  let cdp = null;
+  let tempProfileDir = null;
 
-  const tempProfileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'chrome-cdp-742-'));
-  const chromeProc = spawn(chromeExe, [
-    '--headless=new',
-    '--remote-debugging-port=9223',
-    `--user-data-dir=${tempProfileDir}`,
-    '--disable-gpu',
-    '--no-first-run',
-    'about:blank'
-  ]);
+  try {
+    const chromeExe = findChromeExecutable();
+    console.log(`Using Chrome executable: ${chromeExe}`);
 
-  let versionData = null;
-  for (let i = 0; i < 30; i++) {
-    try {
-      const r = await fetch('http://127.0.0.1:9223/json/version');
-      if (r.ok) {
-        versionData = await r.json();
-        break;
-      }
-    } catch {}
-    await new Promise(r => setTimeout(r, 200));
-  }
+    const httpPort = process.env.PORT ? parseInt(process.env.PORT, 10) : await getFreePort();
+    const cdpPort = process.env.CDP_PORT ? parseInt(process.env.CDP_PORT, 10) : await getFreePort();
+    const baseUrl = `http://127.0.0.1:${httpPort}`;
+    const cdpBase = `http://127.0.0.1:${cdpPort}`;
 
-  if (!versionData) {
-    throw new Error('Chrome remote debugging did not respond on port 9223');
-  }
+    server = await startServer(httpPort);
+    console.log(`HTTP Server listening on ${baseUrl}`);
 
-  console.log(`Browser: ${versionData.Browser}`);
-  console.log(`User-Agent: ${versionData['User-Agent']}`);
+    tempProfileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'chrome-cdp-8-'));
+    chromeProc = spawn(chromeExe, [
+      '--headless=new',
+      `--remote-debugging-port=${cdpPort}`,
+      `--user-data-dir=${tempProfileDir}`,
+      '--disable-gpu',
+      '--no-first-run',
+      'about:blank'
+    ]);
 
-  const targetsRes = await fetch('http://127.0.0.1:9223/json/list');
-  const targets = await targetsRes.json();
-  const pageTarget = targets.find(t => t.type === 'page') || targets[0];
-  const cdp = new CDPClient(pageTarget.webSocketDebuggerUrl);
-  await cdp.connect();
+    let versionData = null;
+    for (let i = 0; i < 30; i++) {
+      try {
+        const r = await fetch(`${cdpBase}/json/version`);
+        if (r.ok) {
+          versionData = await r.json();
+          break;
+        }
+      } catch {}
+      await new Promise(r => setTimeout(r, 200));
+    }
 
-  await cdp.send('Page.enable');
-  await cdp.send('Runtime.enable');
+    if (!versionData) {
+      throw new Error(`Chrome remote debugging did not respond on port ${cdpPort}`);
+    }
 
-  // STEP 1: In-Page Browser Test Suite Execution
-  console.log('\n--- Step 1: Executing In-Page Browser Test Suite ---');
-  await cdp.send('Page.navigate', { url: 'http://127.0.0.1:8996/tests/carousel-browser-test.html' });
+    console.log(`Browser: ${versionData.Browser}`);
+    console.log(`User-Agent: ${versionData['User-Agent']}`);
+
+    const targetsRes = await fetch(`${cdpBase}/json/list`);
+    const targets = await targetsRes.json();
+    const pageTarget = targets.find(t => t.type === 'page') || targets[0];
+    cdp = new CDPClient(pageTarget.webSocketDebuggerUrl);
+    await cdp.connect();
+
+    await cdp.send('Page.enable');
+    await cdp.send('Runtime.enable');
+
+    // STEP 1: In-Page Browser Test Suite Execution
+    console.log('\n--- Step 1: Executing In-Page Browser Test Suite ---');
+    await cdp.send('Page.navigate', { url: `${baseUrl}/tests/carousel-browser-test.html` });
 
   let testDone = false;
   for (let i = 0; i < 50; i++) {
@@ -212,7 +276,7 @@ async function run() {
 
   // STEP 2: Real Browser Keystroke & Mouse Automation on rendered-migrated-page.html
   console.log('\n--- Step 2: Executing Real-Browser Keystroke & Pointer Automation (Findings A, B & Stage 7.4.2 Requirements) ---');
-  await cdp.send('Page.navigate', { url: 'http://127.0.0.1:8996/rendered-migrated-page.html' });
+  await cdp.send('Page.navigate', { url: `${baseUrl}/rendered-migrated-page.html` });
   await new Promise(r => setTimeout(r, 600));
 
   // 1. Finding 1: Accessible name verification (associated visible heading)
@@ -367,7 +431,7 @@ async function run() {
   // 3. Test B: Stale Pointer Modality Regression
   console.log('\nVerifying Test B: Stale Pointer Modality Regression');
   // Load a fresh page with autoplay running
-  await cdp.send('Page.navigate', { url: 'http://127.0.0.1:8996/rendered-migrated-page.html' });
+  await cdp.send('Page.navigate', { url: `${baseUrl}/rendered-migrated-page.html` });
   await new Promise(r => setTimeout(r, 600));
 
   let initialAutoplayLabel = await cdp.eval('document.querySelector(".carousel-autoplay-btn")?.getAttribute("aria-label")');
@@ -440,7 +504,7 @@ async function run() {
 
   // 4. Test C: Mouse Stop and Start
   console.log('\nVerifying Test C: Mouse Stop and Start');
-  await cdp.send('Page.navigate', { url: 'http://127.0.0.1:8996/rendered-migrated-page.html' });
+  await cdp.send('Page.navigate', { url: `${baseUrl}/rendered-migrated-page.html` });
   await new Promise(r => setTimeout(r, 600));
 
   await cdp.eval('document.querySelector(".carousel-autoplay-btn").scrollIntoView({ block: "center" });');
@@ -504,7 +568,7 @@ async function run() {
 
   // 5. Test D: Keyboard Stop and Start (Enter and Space Keys)
   console.log('\nVerifying Test D: Keyboard Stop and Start (Enter and Space Keys)');
-  await cdp.send('Page.navigate', { url: 'http://127.0.0.1:8996/rendered-migrated-page.html' });
+  await cdp.send('Page.navigate', { url: `${baseUrl}/rendered-migrated-page.html` });
   await new Promise(r => setTimeout(r, 600));
 
   await cdp.eval(`(() => {
@@ -645,7 +709,7 @@ async function run() {
   await cdp.send('Emulation.setEmulatedMedia', {
     features: [{ name: 'prefers-reduced-motion', value: 'reduce' }]
   });
-  await cdp.send('Page.navigate', { url: 'http://127.0.0.1:8996/rendered-migrated-page.html' });
+  await cdp.send('Page.navigate', { url: `${baseUrl}/rendered-migrated-page.html` });
   await new Promise(r => setTimeout(r, 600));
 
   let reducedLabel = await cdp.eval('document.querySelector(".carousel-autoplay-btn")?.getAttribute("aria-label")');
@@ -660,18 +724,28 @@ async function run() {
   }
   console.log('✓ Reduced Motion: Automatic rotation cleanly suppressed on load.');
 
-  // Cleanup
-  console.log('\n--- Shutting Down Test Environment ---');
-  cdp.close();
-  try {
-    chromeProc.kill();
-  } catch {}
-  await new Promise(resolve => setTimeout(resolve, 500));
-  await new Promise(resolve => server.close(resolve));
-  try {
-    fs.rmSync(tempProfileDir, { recursive: true, force: true, maxRetries: 3 });
-  } catch {}
-  console.log('All real browser CDP conformance tests passed successfully!');
+  console.log('\nAll real browser CDP conformance tests passed successfully!');
+  } finally {
+    console.log('\n--- Shutting Down Test Environment ---');
+    if (cdp) {
+      try { cdp.close(); } catch {}
+    }
+    if (chromeProc) {
+      try {
+        chromeProc.kill();
+      } catch {}
+    }
+    if (server) {
+      try {
+        await new Promise(resolve => server.close(resolve));
+      } catch {}
+    }
+    if (tempProfileDir && fs.existsSync(tempProfileDir)) {
+      try {
+        fs.rmSync(tempProfileDir, { recursive: true, force: true, maxRetries: 3 });
+      } catch {}
+    }
+  }
 }
 
 run().catch((err) => {

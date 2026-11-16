@@ -147,57 +147,158 @@ function decorateButtons(main) {
  * Normalizes JCR paths and maps whitespace-containing assets to URL-safe aliases.
  * @param {Element} main The main container element
  */
-function normalizeMediaSources(main) {
+/**
+ * Central asset alias map for URL-safe delivery
+ */
+export const ASSET_ALIAS_MAP = {
+  'El Gordo Green.jpg': 'El-Gordo-Green.jpg',
+};
+
+/**
+ * Safely decodes a URI component without throwing on malformed sequences.
+ * @param {string} val String to decode
+ * @returns {string} Decoded string or original if malformed
+ */
+export function safeDecodeURIComponent(val) {
+  try {
+    return decodeURIComponent(val);
+  } catch {
+    return val;
+  }
+}
+
+/**
+ * Checks if a URL is an external absolute URL (http, https, protocol-relative).
+ * @param {string} url The URL to check
+ * @returns {boolean} True if external
+ */
+export function isExternalMediaUrl(url) {
+  if (!url) return false;
+  const trimmed = url.trim();
+  return /^https?:\/\//i.test(trimmed) || /^\/\//.test(trimmed);
+}
+
+/**
+ * Resolves a single media URL to the repository-hosted media path.
+ * @param {string} rawSrc Raw media URL or path
+ * @param {string} basePath Base code path (defaults to window.hlx.codeBasePath)
+ * @returns {string} Resolved media URL
+ */
+export function resolveMediaUrl(rawSrc, basePath = (typeof window !== 'undefined' && window.hlx?.codeBasePath) || '') {
+  if (!rawSrc) return rawSrc;
+  const trimmed = rawSrc.trim();
+
+  // Do not rewrite external absolute URLs
+  if (isExternalMediaUrl(trimmed)) {
+    return rawSrc;
+  }
+
   const damPrefix = '/content/dam/we-retail/';
-  const basePath = window.hlx?.codeBasePath || '';
+  const isDam = trimmed.includes(damPrefix);
+  const isMedia = trimmed.startsWith('/media/') || trimmed.startsWith('media/') || (trimmed.includes('/media/') && !trimmed.includes('://'));
 
-  // Central asset alias map for URL-safe delivery
-  const ALIAS_MAP = {
-    'El Gordo Green.jpg': 'El-Gordo-Green.jpg',
-  };
+  if (isDam || isMedia || trimmed.includes('El Gordo Green.jpg')) {
+    try {
+      const [pathOnly, queryOrHash] = trimmed.split(/([?#].*)/, 2);
+      let fileName = safeDecodeURIComponent(pathOnly.split('/').pop());
 
-  function resolveMediaUrl(rawSrc) {
-    if (!rawSrc) return rawSrc;
-    const isDam = rawSrc.includes(damPrefix);
-    const isMedia = rawSrc.startsWith('/media/') || rawSrc.includes('/media/');
-
-    if (isDam || isMedia) {
-      const [pathOnly, queryOrHash] = rawSrc.split(/([?#].*)/, 2);
-      let fileName = decodeURIComponent(pathOnly.split('/').pop());
-
-      if (ALIAS_MAP[fileName]) {
-        fileName = ALIAS_MAP[fileName];
+      if (ASSET_ALIAS_MAP[fileName]) {
+        fileName = ASSET_ALIAS_MAP[fileName];
       }
 
       const encodedFile = encodeURIComponent(fileName);
       return `${basePath}/media/${encodedFile}${queryOrHash || ''}`;
+    } catch {
+      return rawSrc;
     }
-    return rawSrc;
   }
+  return rawSrc;
+}
 
-  main.querySelectorAll('img').forEach((img) => {
-    const src = img.getAttribute('src');
-    if (src && (src.includes(damPrefix) || src.includes('El Gordo Green.jpg') || src.startsWith('/media/'))) {
-      if (src.includes(damPrefix) || src.includes('El Gordo Green.jpg')) {
-        img.setAttribute('data-original-source', src);
-      }
-      img.src = resolveMediaUrl(src);
-    }
-  });
+/**
+ * Resolves srcset entries to repository-hosted media paths while preserving
+ * descriptors (e.g. 2000w, 2x) and query parameters.
+ * @param {string} srcset Raw srcset string
+ * @param {string} basePath Base code path
+ * @returns {string} Resolved srcset string
+ */
+export function resolveMediaSrcset(srcset, basePath = (typeof window !== 'undefined' && window.hlx?.codeBasePath) || '') {
+  if (!srcset) return srcset;
+  try {
+    return srcset
+      .split(',')
+      .map((entry) => {
+        const trimmed = entry.trim();
+        if (!trimmed) return entry;
+        const tokens = trimmed.split(/\s+/);
+        if (tokens.length === 1) {
+          return resolveMediaUrl(tokens[0], basePath);
+        }
+        const lastToken = tokens[tokens.length - 1];
+        if (/^\d+(\.\d+)?[wx]$/i.test(lastToken)) {
+          const url = tokens.slice(0, -1).join(' ');
+          const resolved = resolveMediaUrl(url, basePath);
+          return `${resolved} ${lastToken}`;
+        }
+        const url = tokens[0];
+        const descriptor = tokens.slice(1).join(' ');
+        const resolved = resolveMediaUrl(url, basePath);
+        return descriptor ? `${resolved} ${descriptor}` : resolved;
+      })
+      .join(', ');
+  } catch {
+    return srcset;
+  }
+}
 
-  main.querySelectorAll('source').forEach((source) => {
-    const srcset = source.getAttribute('srcset');
-    if (srcset && (srcset.includes(damPrefix) || srcset.includes('El Gordo Green.jpg') || srcset.includes('/media/'))) {
-      if (srcset.includes(damPrefix) || srcset.includes('El Gordo Green.jpg')) {
-        source.setAttribute('data-original-source', srcset);
+/**
+ * Resolves We.Retail DAM asset references to repository-hosted media.
+ * Normalizes JCR paths and maps whitespace-containing assets to URL-safe aliases.
+ * @param {Element} main The main container element
+ */
+export function normalizeMediaSources(main) {
+  const damPrefix = '/content/dam/we-retail/';
+  const basePath = (typeof window !== 'undefined' && window.hlx?.codeBasePath) || '';
+
+  try {
+    main.querySelectorAll('img').forEach((img) => {
+      try {
+        const src = img.getAttribute('src');
+        if (src && !isExternalMediaUrl(src) && (src.includes(damPrefix) || src.includes('El Gordo Green.jpg') || src.startsWith('/media/') || src.startsWith('media/'))) {
+          if (src.includes(damPrefix) || src.includes('El Gordo Green.jpg')) {
+            img.setAttribute('data-original-source', src);
+          }
+          img.src = resolveMediaUrl(src, basePath);
+        }
+
+        const srcset = img.getAttribute('srcset');
+        if (srcset) {
+          if (srcset.includes(damPrefix) || srcset.includes('El Gordo Green.jpg')) {
+            img.setAttribute('data-original-source', srcset);
+          }
+          img.srcset = resolveMediaSrcset(srcset, basePath);
+        }
+      } catch {
+        // Individual image failure must not halt processing
       }
-      source.srcset = srcset.replace(/(?:\/content\/dam\/we-retail\/[^\s,]+?\/|\/media\/)([^\s,?#]+)/g, (match, fileName) => {
-        let decoded = decodeURIComponent(fileName);
-        if (ALIAS_MAP[decoded]) decoded = ALIAS_MAP[decoded];
-        return `${basePath}/media/${encodeURIComponent(decoded)}`;
-      });
-    }
-  });
+    });
+
+    main.querySelectorAll('source').forEach((source) => {
+      try {
+        const srcset = source.getAttribute('srcset');
+        if (srcset) {
+          if (srcset.includes(damPrefix) || srcset.includes('El Gordo Green.jpg')) {
+            source.setAttribute('data-original-source', srcset);
+          }
+          source.srcset = resolveMediaSrcset(srcset, basePath);
+        }
+      } catch {
+        // Individual source failure must not halt processing
+      }
+    });
+  } catch {
+    // Non-fatal: ensure entire page decoration process is never crashed
+  }
 }
 
 /**
@@ -273,4 +374,6 @@ async function loadPage() {
   loadDelayed();
 }
 
-loadPage();
+if (!window.hlx?.suppressLoadPage) {
+  loadPage();
+}

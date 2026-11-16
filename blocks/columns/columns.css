@@ -26,13 +26,22 @@
 }
 
 /* Service feature item with icon + text (e.g. Free delivery, tracking, support) */
-.columns > div > div:has(h4) {
+.columns > div > div:has(h4),
+.columns .columns-col:has(h4) {
   flex-direction: row;
   align-items: center;
 }
 
+.columns .columns-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
 .columns > div > div:has(h4) img,
-.columns > div > div:has(h4) picture img {
+.columns > div > div:has(h4) picture img,
+.columns .columns-col:has(h4) img,
+.columns .columns-col:has(h4) picture img {
   width: 36px !important;
   height: 36px !important;
   min-width: 36px;
