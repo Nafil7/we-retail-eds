@@ -132,17 +132,25 @@ function startServer(port = 8996) {
 }
 
 class CDPClient {
-  constructor(wsUrl, baseUrl = '') {
+  constructor(wsUrl, monitoredOrigins = []) {
     this.wsUrl = wsUrl;
-    this.baseUrl = baseUrl;
+    this.monitoredOrigins = monitoredOrigins;
     this.id = 1;
     this.callbacks = new Map();
     this.consoleErrors = [];
+    this.jsExceptions = [];
     this.requests = new Map();
     this.allResponses = [];
     this.networkFailures = [];
     this.unexpectedHttpErrors = [];
     this.searchSubmission = null;
+    this.expectingSearchSubmission = false;
+  }
+
+  isMonitored(url) {
+    if (!url || typeof url !== 'string') return false;
+    if (this.monitoredOrigins.length === 0) return true;
+    return this.monitoredOrigins.some(origin => url.startsWith(origin));
   }
 
   async connect() {
@@ -158,6 +166,16 @@ class CDPClient {
           const text = (data.params.args || []).map(a => a.value || a.description || '').join(' ');
           this.consoleErrors.push(text);
         }
+      } else if (data.method === 'Runtime.exceptionThrown') {
+        const details = data.params.exceptionDetails;
+        const text = details.exception?.description || details.text || JSON.stringify(details);
+        this.jsExceptions.push({
+          text,
+          url: details.url,
+          lineNumber: details.lineNumber,
+          columnNumber: details.columnNumber,
+          stackTrace: details.stackTrace
+        });
       } else if (data.method === 'Network.requestWillBeSent') {
         const req = data.params.request;
         this.requests.set(data.params.requestId, {
@@ -167,7 +185,7 @@ class CDPClient {
           type: data.params.type,
           timestamp: data.params.timestamp
         });
-        if (req.url.includes('/content/we-retail/us/en/search.html')) {
+        if (this.expectingSearchSubmission && req.url.includes('/content/we-retail/us/en/search.html')) {
           this.searchSubmission = {
             url: req.url,
             method: req.method,
@@ -187,12 +205,11 @@ class CDPClient {
           type: data.params.type
         };
         this.allResponses.push(entry);
-        if (resp.status >= 400) {
-          // If this is the deliberate search destination verification, record as expected platform limitation
-          const isExpectedSearchLimitation = resp.url.includes('/content/we-retail/us/en/search.html');
+        if (resp.status >= 400 && this.isMonitored(resp.url)) {
+          // Allow the expected search platform limitation ONLY for that exact test
+          const isDeliberateSearchTest = this.expectingSearchSubmission && resp.url.includes('/content/we-retail/us/en/search.html');
           const isFavicon = resp.url.includes('/favicon.ico');
-          const isOurHost = this.baseUrl ? resp.url.startsWith(this.baseUrl) : true;
-          if (!isExpectedSearchLimitation && !isFavicon && isOurHost) {
+          if (!isDeliberateSearchTest && !isFavicon) {
             this.unexpectedHttpErrors.push(entry);
           }
         }
@@ -207,8 +224,7 @@ class CDPClient {
           canceled: !!data.params.canceled,
           timestamp: data.params.timestamp
         };
-        const isOurHost = this.baseUrl ? (!req || req.url.startsWith(this.baseUrl)) : true;
-        if (!data.params.canceled && data.params.errorText !== 'net::ERR_ABORTED' && isOurHost) {
+        if (!data.params.canceled && data.params.errorText !== 'net::ERR_ABORTED' && this.isMonitored(failure.url)) {
           this.networkFailures.push(failure);
         }
       }
@@ -408,7 +424,9 @@ async function run() {
     const targetsRes = await fetch(`${cdpBase}/json/list`);
     const targets = await targetsRes.json();
     const pageTarget = targets.find(t => t.type === 'page') || targets[0];
-    cdp = new CDPClient(pageTarget.webSocketDebuggerUrl, baseUrl);
+    const livePreviewOrigin = 'https://feature-visual-parity-reconciliation--we-retail-eds--nafil7.aem.page';
+    const monitoredOrigins = [baseUrl, livePreviewOrigin];
+    cdp = new CDPClient(pageTarget.webSocketDebuggerUrl, monitoredOrigins);
     await cdp.connect();
 
     await cdp.send('Page.enable');
@@ -1150,8 +1168,10 @@ async function run() {
 
   console.log('Submitting non-empty search query "hiking boots & jackets" via Enter key...');
   cdp.searchSubmission = null;
+  cdp.expectingSearchSubmission = true;
   await cdp.sendKey('Enter', 'Enter', 13);
   await new Promise(r => setTimeout(r, 600));
+  cdp.expectingSearchSubmission = false;
 
   assert(cdp.searchSubmission, 'Search form submission request must be dispatched on Enter');
   console.log('Captured search submission:', cdp.searchSubmission);
@@ -1253,14 +1273,19 @@ async function run() {
 
   // 1. Local Fixture Full-Page Screenshots
   console.log('Capturing Local Fixture full-page screenshots from:', baseUrl);
-  await cdp.captureFullPageScreenshot(path.join(artifactDir, 'eds-local-fullpage-desktop-1440.png'), 1440);
-  console.log('✓ Saved local fixture full-page desktop screenshot (1440px) to eds-local-fullpage-desktop-1440.png');
-
-  await cdp.captureFullPageScreenshot(path.join(artifactDir, 'eds-local-fullpage-tablet-768.png'), 768);
-  console.log('✓ Saved local fixture full-page tablet screenshot (768px) to eds-local-fullpage-tablet-768.png');
-
-  await cdp.captureFullPageScreenshot(path.join(artifactDir, 'eds-local-fullpage-mobile-375.png'), 375);
-  console.log('✓ Saved local fixture full-page mobile screenshot (375px) to eds-local-fullpage-mobile-375.png');
+  const localCaptureFiles = [
+    { name: 'desktop', file: 'eds-local-fullpage-desktop-1440.png', width: 1440 },
+    { name: 'tablet', file: 'eds-local-fullpage-tablet-768.png', width: 768 },
+    { name: 'mobile', file: 'eds-local-fullpage-mobile-375.png', width: 375 }
+  ];
+  for (const item of localCaptureFiles) {
+    const targetPath = path.join(artifactDir, item.file);
+    await cdp.captureFullPageScreenshot(targetPath, item.width);
+    assert(fs.existsSync(targetPath), `Required local screenshot missing: ${targetPath}`);
+    const stat = fs.statSync(targetPath);
+    assert(stat.size > 10000, `Required local screenshot is empty or corrupt: ${targetPath} (${stat.size} bytes)`);
+    console.log(`✓ Saved and verified local fixture ${item.name} full-page screenshot (${item.width}px): ${item.file} (${stat.size} bytes)`);
+  }
 
   // Maintain viewport screenshots
   await cdp.setViewport(1440, 900, false);
@@ -1271,24 +1296,101 @@ async function run() {
   await cdp.captureScreenshot(path.join(artifactDir, 'eds-remediation-mobile-375.png'));
 
   // 2. Actual Live EDS Preview Full-Page Screenshots
-  const livePreviewUrl = 'https://feature-visual-parity-reconciliation--we-retail-eds--nafil7.aem.page/rendered-migrated-page.html';
-  console.log('Capturing Actual Live EDS Preview full-page screenshots from:', livePreviewUrl);
-  try {
-    await cdp.send('Page.navigate', { url: livePreviewUrl });
-    await new Promise(r => setTimeout(r, 2500));
-    await cdp.captureFullPageScreenshot(path.join(artifactDir, 'eds-preview-fullpage-desktop-1440.png'), 1440);
-    console.log('✓ Saved actual EDS preview full-page desktop screenshot to eds-preview-fullpage-desktop-1440.png');
+  const livePreviewUrl = `${livePreviewOrigin}/rendered-migrated-page.html`;
+  console.log('Navigating to Actual Live EDS Preview:', livePreviewUrl);
+  await cdp.send('Page.navigate', { url: livePreviewUrl });
 
-    await cdp.captureFullPageScreenshot(path.join(artifactDir, 'eds-preview-fullpage-tablet-768.png'), 768);
-    console.log('✓ Saved actual EDS preview full-page tablet screenshot to eds-preview-fullpage-tablet-768.png');
+  // Verify final browser URL matches expected origin
+  let liveNavUrl = '';
+  for (let i = 0; i < 40; i++) {
+    liveNavUrl = await cdp.eval('window.location.href');
+    if (liveNavUrl && liveNavUrl.includes('feature-visual-parity-reconciliation--we-retail-eds--nafil7.aem.page')) break;
+    await new Promise(r => setTimeout(r, 200));
+  }
+  assert(
+    liveNavUrl.includes('feature-visual-parity-reconciliation--we-retail-eds--nafil7.aem.page'),
+    `Final browser URL must match live preview origin (got "${liveNavUrl}")`
+  );
+  console.log(`✓ Live Preview URL verified: ${liveNavUrl}`);
 
-    await cdp.captureFullPageScreenshot(path.join(artifactDir, 'eds-preview-fullpage-mobile-375.png'), 375);
-    console.log('✓ Saved actual EDS preview full-page mobile screenshot to eds-preview-fullpage-mobile-375.png');
-  } catch (err) {
-    console.warn('Live EDS preview capture note:', err.message);
+  // Verify expected page content rendered in DOM
+  const pageReady = await cdp.eval(`(() => {
+    const hero = document.querySelector('.hero');
+    const h1 = hero ? hero.querySelector('h1') : null;
+    const carousel = document.querySelector('.carousel');
+    const cols = document.querySelectorAll('.columns');
+    return {
+      hasHero: !!hero,
+      h1Text: h1 ? h1.textContent.trim() : null,
+      hasCarousel: !!carousel,
+      columnsCount: cols.length
+    };
+  })()`);
+  assert.strictEqual(pageReady.hasHero, true, 'Live preview must contain .hero block');
+  assert.strictEqual(pageReady.h1Text, 'Built for the coldest winter on earth', 'Live preview must render expected H1 content');
+  assert.strictEqual(pageReady.hasCarousel, true, 'Live preview must contain .carousel block');
+  assert(pageReady.columnsCount >= 2, 'Live preview must render columns blocks');
+  console.log('✓ Live Preview Content verified in live DOM:', pageReady);
+
+  // Wait for document readiness and all required images to finish loading
+  let imagesReady = false;
+  let liveMediaAudit = null;
+  for (let i = 0; i < 40; i++) {
+    liveMediaAudit = await cdp.eval(`(() => {
+      const isDocComplete = document.readyState === 'complete';
+      const imgs = [...document.querySelectorAll('img')];
+      const loaded = imgs.filter(img => img.complete && img.naturalWidth > 0);
+      const broken = imgs.filter(img => img.complete && img.naturalWidth === 0);
+      return {
+        isDocComplete,
+        total: imgs.length,
+        loaded: loaded.length,
+        broken: broken.map(img => img.src)
+      };
+    })()`);
+    if (liveMediaAudit && liveMediaAudit.isDocComplete && liveMediaAudit.total > 0 && liveMediaAudit.loaded === liveMediaAudit.total) {
+      imagesReady = true;
+      break;
+    }
+    await new Promise(r => setTimeout(r, 250));
+  }
+  console.log('Live preview document & image audit:', liveMediaAudit);
+  assert.strictEqual(imagesReady, true, 'All images on live preview must finish loading with non-zero dimensions');
+  assert.strictEqual(liveMediaAudit.broken.length, 0, `No broken images allowed on live preview: ${JSON.stringify(liveMediaAudit.broken)}`);
+
+  // Capture live preview full-page screenshots
+  const previewCaptureFiles = [
+    { name: 'desktop', file: 'eds-preview-fullpage-desktop-1440.png', width: 1440 },
+    { name: 'tablet', file: 'eds-preview-fullpage-tablet-768.png', width: 768 },
+    { name: 'mobile', file: 'eds-preview-fullpage-mobile-375.png', width: 375 }
+  ];
+  for (const item of previewCaptureFiles) {
+    const targetPath = path.join(artifactDir, item.file);
+    await cdp.captureFullPageScreenshot(targetPath, item.width);
+    assert(fs.existsSync(targetPath), `Required live preview screenshot missing: ${targetPath}`);
+    const stat = fs.statSync(targetPath);
+    assert(stat.size > 10000, `Required live preview screenshot empty or corrupt: ${targetPath} (${stat.size} bytes)`);
+    console.log(`✓ Saved and verified live preview ${item.name} full-page screenshot (${item.width}px): ${item.file} (${stat.size} bytes)`);
   }
 
-  // STEP 10: Final Health Audit (Console Errors, Network Failures & Unexpected HTTP Statuses)
+  // Regression Test: Unexpected 404 Detection on Live Preview Origin
+  console.log('\n--- Regression Test: Verifying Unexpected 404 Detection on Live Preview Origin ---');
+  const probePath = `/deliberate-missing-asset-probe-${Date.now()}.css`;
+  const probeUrl = `${livePreviewOrigin}${probePath}`;
+  console.log(`Dispatching deliberate probe request to non-existent asset on live preview: ${probeUrl}`);
+  await cdp.eval(`fetch('${probePath}').catch(() => {})`);
+  await new Promise(r => setTimeout(r, 800));
+
+  const probeIndex = cdp.unexpectedHttpErrors.findIndex(e => e.url === probeUrl);
+  assert(probeIndex !== -1, `Network monitor must detect unexpected 404 from live preview origin (${probeUrl})`);
+  const detectedProbe = cdp.unexpectedHttpErrors[probeIndex];
+  assert.strictEqual(detectedProbe.status, 404, 'Detected probe must carry status 404');
+  console.log('✓ Regression Test Passed: Unexpected 404 on live preview origin correctly detected and recorded in unexpectedHttpErrors:');
+  console.log('   Probe record:', { url: detectedProbe.url, status: detectedProbe.status, statusText: detectedProbe.statusText });
+  // Remove probe entry so subsequent health audit reflects genuine page traffic
+  cdp.unexpectedHttpErrors.splice(probeIndex, 1);
+
+  // STEP 10: Final Health Audit (Console Errors, JS Exceptions, Network Failures & Unexpected HTTP Statuses)
   console.log('\n--- Step 10: Final Browser Health Audit ---');
   console.log(`Failed network requests: ${cdp.networkFailures.length}`);
   if (cdp.networkFailures.length > 0) {
@@ -1310,12 +1412,22 @@ async function run() {
     `HTTP response status assertion failed: expected 0 unexpected 4xx/5xx responses, got ${cdp.unexpectedHttpErrors.length}. Details: ${JSON.stringify(cdp.unexpectedHttpErrors)}`
   );
 
+  console.log(`Uncaught JS Exceptions: ${cdp.jsExceptions.length}`);
+  if (cdp.jsExceptions.length > 0) {
+    console.error('Diagnostic details for uncaught JS exceptions:', JSON.stringify(cdp.jsExceptions, null, 2));
+  }
+  assert.strictEqual(
+    cdp.jsExceptions.length,
+    0,
+    `Browser JavaScript exception assertion failed: expected 0 uncaught JS exceptions, got ${cdp.jsExceptions.length}. Details: ${JSON.stringify(cdp.jsExceptions)}`
+  );
+
   console.log(`Console Errors detected: ${cdp.consoleErrors.length}`);
   if (cdp.consoleErrors.length > 0) {
     console.error('Console errors:', cdp.consoleErrors);
   }
   assert.strictEqual(cdp.consoleErrors.length, 0, 'No uncaught console errors allowed during acceptance pass');
-  console.log('✓ Browser Health Audit: 0 network failures, 0 unexpected 4xx/5xx responses, 0 uncaught console errors.');
+  console.log('✓ Browser Health Audit: 0 network failures, 0 unexpected 4xx/5xx responses, 0 JS exceptions, 0 uncaught console errors.');
 
   console.log('\nAll real browser CDP conformance & visual acceptance tests passed successfully!');
   } finally {
